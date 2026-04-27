@@ -183,20 +183,12 @@ func _update_display():
 		elif is_complete:
 			mold_sprite.modulate = Color.GREEN * 0.5
 		elif current_fill > 0:
-			mold_sprite.modulate = _get_metal_color(current_metal) * 0.7
+			mold_sprite.modulate = MetalDefinition.get_color(current_metal) * 0.7
 		else:
 			mold_sprite.modulate = Color.WHITE
 
 func _get_metal_color(metal_id: String) -> Color:
-	match metal_id:
-		"iron":
-			return Color(0.6, 0.4, 0.3)
-		"steel":
-			return Color(0.7, 0.75, 0.8)
-		"gold":
-			return Color(1.0, 0.85, 0.2)
-		_:
-			return Color(0.8, 0.6, 0.3)
+	return MetalDefinition.get_color(metal_id)
 
 func _create_contamination_effect():
 	if mold_sprite:
@@ -214,7 +206,7 @@ func _trigger_wrong_metal_flash(_wrong_metal: String):
 func _create_receiving_glow(metal_id: String):
 	# Brief bright flash when metal enters the mold
 	if mold_sprite:
-		var color = _get_metal_color(metal_id)
+		var color = MetalDefinition.get_color(metal_id)
 		var tween = create_tween()
 		tween.tween_property(mold_sprite, "modulate", color * 1.5, 0.1)
 		tween.tween_property(mold_sprite, "modulate", color * 0.7, 0.2)

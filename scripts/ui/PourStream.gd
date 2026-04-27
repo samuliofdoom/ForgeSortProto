@@ -152,12 +152,4 @@ func hide_stream():
 		glow_sprite.visible = false
 
 func _get_metal_color(metal_id: String) -> Color:
-	match metal_id:
-		"iron":
-			return Color(0.6, 0.4, 0.3, 0.8)   # brown
-		"steel":
-			return Color(0.7, 0.75, 0.8, 0.8)  # silver
-		"gold":
-			return Color(1.0, 0.85, 0.2, 0.8)   # gold
-		_:
-			return Color(0.8, 0.6, 0.3, 0.8)
+	return MetalDefinition.get_color(metal_id).linear_to_srgb()

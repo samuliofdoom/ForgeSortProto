@@ -79,12 +79,4 @@ func set_active(active: bool):
 	is_active = active
 
 func _get_metal_color(metal_id: String) -> Color:
-	match metal_id:
-		"iron":
-			return Color(0.75, 0.45, 0.3)
-		"steel":
-			return Color(0.75, 0.8, 0.9)
-		"gold":
-			return Color(1.0, 0.85, 0.15)
-		_:
-			return Color(0.85, 0.6, 0.3)
+	return MetalDefinition.get_color(metal_id).linear_to_srgb()

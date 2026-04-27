@@ -199,12 +199,4 @@ func _hide_stream_visuals():
 		_glow_rect.visible = false
 
 func _get_metal_color(metal_id: String) -> Color:
-	match metal_id:
-		"iron":
-			return Color(0.75, 0.45, 0.3, 0.85)   # molten iron brown
-		"steel":
-			return Color(0.75, 0.8, 0.9, 0.85)   # molten steel blue-silver
-		"gold":
-			return Color(1.0, 0.85, 0.15, 0.9)   # molten gold yellow
-		_:
-			return Color(0.85, 0.6, 0.3, 0.85)
+	return MetalDefinition.get_color(metal_id).linear_to_srgb()

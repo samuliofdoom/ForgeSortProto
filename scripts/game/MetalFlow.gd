@@ -47,7 +47,7 @@ func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 	if flow_controller and flow_controller.has_method("get_mold_for_pour_position"):
 		var result = flow_controller.get_mold_for_pour_position(pour_pos)
 		if result.mold_id != "":
-			flow_controller.route_metal_to_mold(result.mold_id, metal_id, amount)
+			flow_controller.route_metal_to_mold(result.intake_id, result.mold_id, metal_id, amount)
 		elif result.intake_id != "":
 			# Intake blocked by gates — route to fallback
 			_route_fallback(metal_id, pour_pos, amount)
@@ -61,7 +61,7 @@ func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 		if intake_id != "":
 			var target_mold = flow_controller.get_mold_for_intake(intake_id) if flow_controller else ""
 			if target_mold != "":
-				flow_controller.route_metal_to_mold(target_mold, metal_id, amount)
+				flow_controller.route_metal_to_mold(intake_id, target_mold, metal_id, amount)
 			else:
 				_route_fallback(metal_id, pour_pos, amount)
 		else:

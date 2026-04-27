@@ -68,10 +68,10 @@ func get_mold_for_intake(intake_id: String) -> String:
 		return INTAKE_TO_MOLD.get(active_gates[0], "")
 	return INTAKE_TO_MOLD.get(intake_id, "")
 
-func route_metal_to_mold(mold_id: String, metal_id: String, amount: float):
+func route_metal_to_mold(intake_id: String, mold_id: String, metal_id: String, amount: float):
 	if molds.has(mold_id) and molds[mold_id]:
 		molds[mold_id].receive_metal(metal_id, amount)
-		flow_routed.emit("", mold_id, metal_id, amount)
+		flow_routed.emit(intake_id, mold_id, metal_id, amount)
 
 func _on_intake_area_entered(area: Area2D, intake_id: String):
 	if area.has_method("get_metal_id"):
@@ -82,7 +82,7 @@ func _on_intake_area_entered(area: Area2D, intake_id: String):
 func route_metal_through_intake(intake_id: String, metal_id: String, amount: float):
 	var target_mold = get_mold_for_intake(intake_id)
 	if target_mold != "":
-		route_metal_to_mold(target_mold, metal_id, amount)
+		route_metal_to_mold(intake_id, target_mold, metal_id, amount)
 
 func reset_all_gates():
 	for gate_id in gate_states.keys():

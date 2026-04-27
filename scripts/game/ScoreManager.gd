@@ -52,7 +52,6 @@ func calculate_order_score(order: OrderDefinition) -> int:
 	if elapsed < SPEED_THRESHOLD_SECONDS:
 		base += SPEED_BONUS
 
-	start_time = Time.get_ticks_msec()
 	total_score += base
 	score_updated.emit(total_score)
 	return base
