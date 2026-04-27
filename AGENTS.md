@@ -81,6 +81,24 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 
 ---
 
+## Quality Gates (MUST PASS BEFORE COMMIT)
+
+**Before marking any ticket done**, verify ALL of the following:
+
+1. **Run `./validate.sh`** — must pass all 6 checks
+2. **Open changed scripts in Godot editor** — Problems panel must show zero warnings or errors
+3. **Run headless gameplay test** — `GodotEngine/Godot_v4.6.2-stable_win64_console.exe --headless --path . --quit-after 300` must exit 0
+4. **Run smoke check** — `GodotEngine/Godot_v4.6.2-stable_win64_console.exe --headless --path . --script scripts/dev/smoke_check.gd --quit-after 10` must exit 0
+
+**Common GDScript warnings to watch for:**
+- `unused_parameter` — prefix unused signal callback params with `_`
+- `standalone_ternary` — ternary result must be assigned: `x = a if cond else b`
+- `unused_signal` — signals with no `connect()` call are intentional (e.g. `part_produced` in Mold.gd), but verify before ignoring
+- `invalid_constant` — Godot 4.6.2 Line2D uses `LINE_CAP_MODE_SQUARE` not `ROUND`, `LINE_JOINT_MODE_BEVEL` not `ROUND`
+- `unused_variable` / `unused_local_variable` — remove or prefix with `_`
+
+---
+
 ## Known Gotchas
 - Gate uses `_input(event)` not `Area2D` for click detection
 - `Mold.clear_mold()` only on contaminated state

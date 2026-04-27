@@ -75,6 +75,54 @@ if [[ -f "project.godot" ]]; then
     done
 fi
 
+# Check 5: GDScript parse check via Godot --check-only
+# --check-only --script validates one script + its dependencies.
+# Running on both test scripts ensures all game scripts are covered.
+echo "Checking GDScript parse errors (--check-only)..."
+CHECK_SCRIPTS=("scripts/dev/smoke_check.gd" "scripts/dev/full_gameplay_test.gd")
+PARSE_ERRORS=0
+for scr in "${CHECK_SCRIPTS[@]}"; do
+    if [[ -f "$scr" ]]; then
+        RESULT=$("$GODOT_EXE" --headless --path . --check-only --script "$scr" 2>&1)
+        if echo "$RESULT" | grep -qi "Parser Error\|Compile Error\|Invalid course"; then
+            echo "  ERROR: Parse errors in $scr:"
+            echo "$RESULT" | grep -i "Parser Error\|Compile Error\|Invalid course" | head -10
+            PARSE_ERRORS=$((PARSE_ERRORS + 1))
+        else
+            echo "  OK: $scr — no parse errors"
+        fi
+    fi
+done
+if [[ $PARSE_ERRORS -gt 0 ]]; then
+    ERRORS=$((ERRORS + PARSE_ERRORS))
+fi
+
+# Check 6: gdlint (GDScript linter) — install if needed
+echo "Checking with gdlint..."
+GDLINT_AVAILABLE=false
+if command -v gdlint &>/dev/null; then
+    GDLINT_AVAILABLE=true
+elif python3 -c "import gdlint" 2>/dev/null; then
+    GDLINT_AVAILABLE=true
+elif [[ -f ".venv/bin/gdlint" ]]; then
+    GDLINT_AVAILABLE=true
+elif python3 -m pip install --break-system-packages --user gdlint 2>/dev/null; then
+    GDLINT_AVAILABLE=true
+fi
+if $GDLINT_AVAILABLE && command -v gdlint &>/dev/null; then
+    GDLINT_CMD=$(command -v gdlint)
+    GDLINT_OUTPUT=$($GDLINT_CMD scripts/ 2>&1 || true)
+    if echo "$GDLINT_OUTPUT" | grep -qi "error"; then
+        echo "  ERROR: gdlint found errors:"
+        echo "$GDLINT_OUTPUT" | grep -i "error" | grep -v "^$" | head -20
+        ERRORS=$((ERRORS + 1))
+    else
+        echo "  OK: gdlint clean"
+    fi
+else
+    echo "  SKIP: gdlint not available (pip install fails on this system)"
+fi
+
 # Summary
 echo ""
 if [[ $ERRORS -eq 0 ]]; then
