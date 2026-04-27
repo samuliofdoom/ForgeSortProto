@@ -11,14 +11,14 @@ func _ready():
 func _noop(_part_id: String = "", _world_pos: Vector2 = Vector2.ZERO):
 	pass
 
-func _on_order_completed(order: OrderDefinition, score: int):
+func _on_order_completed(_order: OrderDefinition, _score: int):
 	var mold_area = get_node_or_null("/root/Main/MoldArea")
 	if not mold_area:
 		return
 
 	var center_pos = mold_area.global_position + Vector2(0, -50)
 	_spawn_pop_text("Order Complete!", center_pos, Color.GREEN)
-	_spawn_pop_text("+%d" % score, center_pos + Vector2(0, 30), Color.YELLOW)
+	_spawn_pop_text("+%d" % _score, center_pos + Vector2(0, 30), Color.YELLOW)
 
 func spawn_part_pop(part_id: String, world_pos: Vector2):
 	var label = Label.new()

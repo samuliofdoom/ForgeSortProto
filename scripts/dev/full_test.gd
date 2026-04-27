@@ -25,7 +25,7 @@ func _ready():
 	_mold_area       = get_node("/root/Main/MoldArea")
 	print("All autoloads ready — game is go")
 
-func _process(delta: float):
+func _process(_delta: float):
 	_tick += 1
 	if _errors > 0:
 		_finalize()

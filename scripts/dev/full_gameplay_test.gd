@@ -29,7 +29,7 @@ func _ready():
 	_game_controller = get_node("/root/Main")  # GameController is on Main node, not an autoload
 	print("All nodes found — game is go")
 
-func _process(delta: float):
+func _process(_delta: float):
 	_tick += 1
 	if _errors > 0:
 		_finalize()

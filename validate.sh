@@ -4,6 +4,7 @@
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
+GODOT_EXE="${GODOT_EXE:-${PROJECT_DIR}/GodotEngine/Godot_v4.6.2-stable_win64_console.exe}"
 
 ERRORS=0
 
@@ -75,11 +76,30 @@ if [[ -f "project.godot" ]]; then
     done
 fi
 
-# Check 5: GDScript parse check via Godot --check-only
+# Check 5: Run smoke_check.gd — force-compiles all scripts via .new() and
+# surfaces semantic warnings (unused params, etc.) to stderr.
+echo "Checking scripts with full compilation..."
+SMOKE_OUTPUT=$("$GODOT_EXE" --headless --path . --script scripts/dev/smoke_check.gd 2>&1)
+SMOKE_EXIT=$?
+if [[ $SMOKE_EXIT -ne 0 ]]; then
+    echo "  ERROR: smoke_check.gd exited with code $SMOKE_EXIT"
+    ERRORS=$((ERRORS + 1))
+fi
+# Godot prints unused-parameter and other semantic warnings to stderr even in
+# headless mode.  Any lines containing "Warning" or "warning" count as a
+# semantic error that should be fixed.
+if echo "$SMOKE_OUTPUT" | grep -qi "Warning\|warning"; then
+    echo "  ERROR: Godot semantic warnings detected:"
+    echo "$SMOKE_OUTPUT" | grep -i "warning" | head -20
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  OK: no Godot warnings in smoke_check"
+fi
+
+# Check 6: GDScript parse check via Godot --check-only
 # --check-only --script validates one script + its dependencies.
-# Running on both test scripts ensures all game scripts are covered.
 echo "Checking GDScript parse errors (--check-only)..."
-CHECK_SCRIPTS=("scripts/dev/smoke_check.gd" "scripts/dev/full_gameplay_test.gd")
+CHECK_SCRIPTS=("scripts/dev/smoke_check.gd" "scripts/dev/verify_game_loads.gd")
 PARSE_ERRORS=0
 for scr in "${CHECK_SCRIPTS[@]}"; do
     if [[ -f "$scr" ]]; then
@@ -97,7 +117,7 @@ if [[ $PARSE_ERRORS -gt 0 ]]; then
     ERRORS=$((ERRORS + PARSE_ERRORS))
 fi
 
-# Check 6: gdlint (GDScript linter) — install if needed
+# Check 7: gdlint (GDScript linter) — install if needed
 echo "Checking with gdlint..."
 GDLINT_AVAILABLE=false
 if command -v gdlint &>/dev/null; then
@@ -121,6 +141,18 @@ if $GDLINT_AVAILABLE && command -v gdlint &>/dev/null; then
     fi
 else
     echo "  SKIP: gdlint not available (pip install fails on this system)"
+fi
+
+# Check 8: Static check for unused function parameters
+echo "Checking for unused GDScript parameters..."
+PY_OUTPUT=$(python3 scripts/dev/detect_unused_params.py 2>&1)
+PY_EXIT=$?
+if [[ $PY_EXIT -ne 0 ]]; then
+    echo "  ERROR: Unused parameters detected:"
+    echo "$PY_OUTPUT" | grep "UNUSED" | head -20
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  OK: no unused parameters"
 fi
 
 # Summary
