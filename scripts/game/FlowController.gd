@@ -29,15 +29,15 @@ func _setup_gates():
 	for gate_id in ["gate_01", "gate_02", "gate_03", "gate_04"]:
 		gate_states[gate_id] = false
 
-func register_gate(gate_id: String, gate_node: Node):
+func register_gate(_gate_id: String, _gate_node: Node):
 	pass
 
 func register_intake(intake_id: String, intake_node: Node):
 	intakes[intake_id] = intake_node
 	intake_node.area_entered.connect(_on_intake_area_entered.bind(intake_id))
 
-func register_mold(mold_id: String, mold_node: Node):
-	molds[mold_id] = mold_node
+func register_mold(_mold_id: String, mold_node: Node):
+	molds[_mold_id] = mold_node
 
 func get_molds() -> Dictionary:
 	return molds

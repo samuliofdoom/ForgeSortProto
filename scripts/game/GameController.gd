@@ -31,7 +31,7 @@ func _on_start_pressed():
 func _on_game_completed(_results: Dictionary):
 	start_button.show()
 
-func _on_game_over(final_score: int, waste_percent: float):
+func _on_game_over(_final_score: int, _waste_percent: float):
 	start_button.show()
 	# TODO: show a dedicated game-over panel with final_score
 
@@ -83,7 +83,7 @@ func _update_mold_requirements_for_order(order: OrderDefinition):
 	_reset_mold(guard, "guard", mold_req["guard"])
 	_reset_mold(grip, "grip", mold_req["grip"])
 
-func _reset_mold(mold, mold_id: String, required_metal: String):
+func _reset_mold(mold, _mold_id: String, required_metal: String):
 	if not mold:
 		return
 

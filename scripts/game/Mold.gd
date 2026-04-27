@@ -181,7 +181,7 @@ func _create_contamination_effect():
 		tween.tween_property(mold_sprite, "modulate", Color.RED, 0.1)
 		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.3)
 
-func _trigger_wrong_metal_flash(wrong_metal: String):
+func _trigger_wrong_metal_flash(_wrong_metal: String):
 	# Distinct pre-contamination flash: orange warning before red contamination
 	if mold_sprite:
 		var tween = create_tween()
