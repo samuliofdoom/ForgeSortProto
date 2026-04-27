@@ -1,0 +1,89 @@
+extends Node
+
+signal gate_toggled(gate_id: String, state: bool)
+signal flow_routed(intake_id: String, mold_id: String, metal_id: String, amount: float)
+
+var gate_states: Dictionary = {}
+
+var intakes: Dictionary = {}
+var molds: Dictionary = {}
+
+const INTAKE_TO_MOLD: Dictionary = {
+	"intake_a": "blade",
+	"intake_b": "guard",
+	"intake_c": "grip"
+}
+
+const GATE_ROUTING: Dictionary = {
+	"gate_01": ["intake_a", "intake_b"],
+	"gate_02": ["intake_b", "intake_c"],
+	"gate_03": ["intake_a", "intake_b", "intake_c"],
+	"gate_04": ["intake_c"]
+}
+
+func _ready():
+	_setup_gates()
+
+func _setup_gates():
+	for gate_id in ["gate_01", "gate_02", "gate_03", "gate_04"]:
+		gate_states[gate_id] = false
+
+func register_gate(gate_id: String, gate_node: Node):
+	pass
+
+func register_intake(intake_id: String, intake_node: Node):
+	intakes[intake_id] = intake_node
+	intake_node.area_entered.connect(_on_intake_area_entered.bind(intake_id))
+
+func register_mold(mold_id: String, mold_node: Node):
+	molds[mold_id] = mold_node
+
+func get_molds() -> Dictionary:
+	return molds
+
+func toggle_gate(gate_id: String):
+	if gate_states.has(gate_id):
+		gate_states[gate_id] = not gate_states[gate_id]
+		gate_toggled.emit(gate_id, gate_states[gate_id])
+
+func set_gate_state(gate_id: String, state: bool):
+	gate_states[gate_id] = state
+	gate_toggled.emit(gate_id, state)
+
+func get_gate_state(gate_id: String) -> bool:
+	return gate_states.get(gate_id, false)
+
+func get_mold_for_intake(intake_id: String) -> String:
+	var active_gates = []
+	for gate_id in GATE_ROUTING.keys():
+		if get_gate_state(gate_id):
+			var gated_intakes = GATE_ROUTING[gate_id]
+			if intake_id in gated_intakes:
+				for g_intake in gated_intakes:
+					if not active_gates.has(g_intake):
+						active_gates.append(g_intake)
+
+	if active_gates.size() > 0:
+		return INTAKE_TO_MOLD.get(active_gates[0], "")
+	return INTAKE_TO_MOLD.get(intake_id, "")
+
+func route_metal_to_mold(mold_id: String, metal_id: String, amount: float):
+	if molds.has(mold_id) and molds[mold_id]:
+		molds[mold_id].receive_metal(metal_id, amount)
+		flow_routed.emit("", mold_id, metal_id, amount)
+
+func _on_intake_area_entered(area: Area2D, intake_id: String):
+	if area.has_method("get_metal_id"):
+		var metal_id = area.get_metal_id()
+		var amount = area.get_metal_amount() if area.has_method("get_metal_amount") else 1.0
+		route_metal_through_intake(intake_id, metal_id, amount)
+
+func route_metal_through_intake(intake_id: String, metal_id: String, amount: float):
+	var target_mold = get_mold_for_intake(intake_id)
+	if target_mold != "":
+		route_metal_to_mold(target_mold, metal_id, amount)
+
+func reset_all_gates():
+	for gate_id in gate_states.keys():
+		gate_states[gate_id] = false
+		gate_toggled.emit(gate_id, false)

@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-04-27T00:00:00Z",
+  "libraries": {
+    "godot": {
+      "files": [
+        {
+          "filename": "gdscript-identifier-scope.md",
+          "topic": "GDScript identifier scope errors",
+          "tech_stack": "GDScript",
+          "fetched": "2026-04-27T00:00:00Z",
+          "source": "Godot 4.6 Official Documentation"
+        },
+        {
+          "filename": "area2d-area-entered-monitoring.md",
+          "topic": "Area2D area_entered signal monitoring requirement",
+          "tech_stack": "GDScript",
+          "fetched": "2026-04-27T00:00:00Z",
+          "source": "Godot 4.6 Official Documentation"
+        },
+        {
+          "filename": "inputeventmousebutton-position.md",
+          "topic": "InputEventMouseButton position inheritance",
+          "tech_stack": "GDScript",
+          "fetched": "2026-04-27T00:00:00Z",
+          "source": "Godot 4.6 Official Documentation"
+        },
+        {
+          "filename": "tscn-parse-errors.md",
+          "topic": "TSCN scene file parse errors",
+          "tech_stack": "GDScript",
+          "fetched": "2026-04-27T00:00:00Z",
+          "source": "Godot 4.6 Official Documentation"
+        }
+      ]
+    }
+  }
+}

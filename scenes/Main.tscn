@@ -1,0 +1,479 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/GameController.gd" id="1_controller"]
+[ext_resource type="Script" path="res://scripts/game/PourZone.gd" id="2_pourzone"]
+[ext_resource type="Script" path="res://scripts/game/Mold.gd" id="3_mold"]
+[ext_resource type="Script" path="res://scripts/game/Gate.gd" id="4_gate"]
+[ext_resource type="Script" path="res://scripts/ui/MetalSelector.gd" id="5_metalsel"]
+[ext_resource type="Script" path="res://scripts/ui/OrderPanel.gd" id="6_orderpanel"]
+[ext_resource type="Script" path="res://scripts/ui/ScoreDisplay.gd" id="7_scoredisp"]
+[ext_resource type="Script" path="res://scripts/ui/WasteMeter.gd" id="8_wastemeter"]
+[ext_resource type="Script" path="res://scripts/ui/ResultPanel.gd" id="9_resultpanel"]
+[ext_resource type="Script" path="res://scripts/game/MetalFlow.gd" id="10_metalflow"]
+[ext_resource type="Script" path="res://scripts/game/PartPopEffect.gd" id="11_partpopeffect"]
+[ext_resource type="Script" path="res://scripts/game/Intake.gd" id="12_intake"]
+[ext_resource type="Script" path="res://scripts/ui/GateToggleUI.gd" id="13_gatetoggleui"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_intake"]
+size = Vector2(40, 30)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gate"]
+size = Vector2(20, 60)
+
+[node name="Main" type="Node"]
+script = ExtResource("1_controller")
+
+[node name="MetalFlow" type="Node" parent="."]
+script = ExtResource("10_metalflow")
+
+[node name="PartPopEffect" type="Node2D" parent="."]
+script = ExtResource("11_partpopeffect")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="TopBar" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 390.0
+offset_bottom = 80.0
+
+[node name="MetalSelector" type="Control" parent="UI/TopBar"]
+layout_mode = 1
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 180.0
+offset_bottom = 60.0
+script = ExtResource("5_metalsel")
+
+[node name="IronButton" type="Button" parent="UI/TopBar/MetalSelector"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 30.0
+offset_right = 60.0
+offset_bottom = 60.0
+button_mask = 1
+text = "Iron"
+
+[node name="SteelButton" type="Button" parent="UI/TopBar/MetalSelector"]
+layout_mode = 0
+offset_left = 65.0
+offset_top = 30.0
+offset_right = 125.0
+offset_bottom = 60.0
+button_mask = 2
+text = "Steel"
+
+[node name="GoldButton" type="Button" parent="UI/TopBar/MetalSelector"]
+layout_mode = 0
+offset_left = 130.0
+offset_top = 30.0
+offset_right = 180.0
+offset_bottom = 60.0
+button_mask = 4
+text = "Gold"
+
+[node name="MetalLabel" type="Label" parent="UI/TopBar/MetalSelector"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 180.0
+offset_bottom = 25.0
+text = "Iron"
+horizontal_alignment = 1
+
+[node name="ScoreDisplay" type="Control" parent="UI/TopBar"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -130.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 60.0
+script = ExtResource("7_scoredisp")
+
+[node name="ScoreLabel" type="Label" parent="UI/TopBar/ScoreDisplay"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = -40.0
+offset_right = 130.0
+offset_bottom = 0.0
+text = "Score: 0"
+horizontal_alignment = 2
+
+[node name="WasteMeter" type="Control" parent="UI"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 10.0
+offset_top = 90.0
+offset_right = 200.0
+offset_bottom = 130.0
+script = ExtResource("8_wastemeter")
+
+[node name="WasteLabel" type="Label" parent="UI/WasteMeter"]
+layout_mode = 0
+offset_right = 100.0
+offset_bottom = 20.0
+text = "Waste: 0"
+
+[node name="WasteBar" type="ProgressBar" parent="UI/WasteMeter"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 25.0
+offset_right = 150.0
+offset_bottom = 45.0
+max_value = 100.0
+value = 0.0
+
+[node name="GateToggleUI" type="Control" parent="UI"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 10.0
+offset_top = 140.0
+offset_right = 200.0
+offset_bottom = 200.0
+script = ExtResource("13_gatetoggleui")
+
+[node name="GateLabel" type="Label" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_right = 80.0
+offset_bottom = 20.0
+text = "Gates:"
+
+[node name="Gate01Button" type="Button" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_top = 25.0
+offset_right = 40.0
+offset_bottom = 55.0
+toggle_mode = true
+text = "G1"
+
+[node name="Gate02Button" type="Button" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_left = 45.0
+offset_top = 25.0
+offset_right = 85.0
+offset_bottom = 55.0
+toggle_mode = true
+text = "G2"
+
+[node name="Gate03Button" type="Button" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_left = 90.0
+offset_top = 25.0
+offset_right = 130.0
+offset_bottom = 55.0
+toggle_mode = true
+text = "G3"
+
+[node name="Gate04Button" type="Button" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_left = 135.0
+offset_top = 25.0
+offset_right = 175.0
+offset_bottom = 55.0
+toggle_mode = true
+text = "G4"
+
+[node name="PourZone" type="Area2D" parent="."]
+position = Vector2(200, 150)
+script = ExtResource("2_pourzone")
+zone_width = 380.0
+
+[node name="PourZoneBG" type="ColorRect" parent="PourZone"]
+offset_left = -190.0
+offset_top = -40.0
+offset_right = 190.0
+offset_bottom = 40.0
+color = Color(0.9, 0.4, 0.1, 0.3)
+
+[node name="PourZoneLabel" type="Label" parent="PourZone"]
+offset_left = -80.0
+offset_top = -10.0
+offset_right = 80.0
+offset_bottom = 10.0
+text = "Hold & Sweep to Pour"
+horizontal_alignment = 1
+
+[node name="RoutingField" type="Node2D" parent="."]
+position = Vector2(200, 280)
+
+[node name="Gate_01" type="StaticBody2D" parent="RoutingField"]
+position = Vector2(-120, 0)
+script = ExtResource("4_gate")
+gate_id = "gate_01"
+
+[node name="Visual" type="ColorRect" parent="RoutingField/Gate_01"]
+offset_left = -10.0
+offset_top = -30.0
+offset_right = 10.0
+offset_bottom = 30.0
+color = Color(0.4, 0.4, 0.5, 1.0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Gate_01"]
+shape = SubResource("RectangleShape2D_gate")
+
+[node name="Gate_02" type="StaticBody2D" parent="RoutingField"]
+position = Vector2(-40, 0)
+script = ExtResource("4_gate")
+gate_id = "gate_02"
+
+[node name="Visual" type="ColorRect" parent="RoutingField/Gate_02"]
+offset_left = -10.0
+offset_top = -30.0
+offset_right = 10.0
+offset_bottom = 30.0
+color = Color(0.4, 0.4, 0.5, 1.0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Gate_02"]
+shape = SubResource("RectangleShape2D_gate")
+
+[node name="Gate_03" type="StaticBody2D" parent="RoutingField"]
+position = Vector2(40, 0)
+script = ExtResource("4_gate")
+gate_id = "gate_03"
+
+[node name="Visual" type="ColorRect" parent="RoutingField/Gate_03"]
+offset_left = -10.0
+offset_top = -30.0
+offset_right = 10.0
+offset_bottom = 30.0
+color = Color(0.4, 0.4, 0.5, 1.0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Gate_03"]
+shape = SubResource("RectangleShape2D_gate")
+
+[node name="Gate_04" type="StaticBody2D" parent="RoutingField"]
+position = Vector2(120, 0)
+script = ExtResource("4_gate")
+gate_id = "gate_04"
+
+[node name="Visual" type="ColorRect" parent="RoutingField/Gate_04"]
+offset_left = -10.0
+offset_top = -30.0
+offset_right = 10.0
+offset_bottom = 30.0
+color = Color(0.4, 0.4, 0.5, 1.0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Gate_04"]
+shape = SubResource("RectangleShape2D_gate")
+
+[node name="Intake_A" type="Area2D" parent="RoutingField"]
+position = Vector2(-120, 60)
+script = ExtResource("12_intake")
+intake_id = "intake_a"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Intake_A"]
+shape = SubResource("RectangleShape2D_intake")
+
+[node name="Intake_B" type="Area2D" parent="RoutingField"]
+position = Vector2(-40, 60)
+script = ExtResource("12_intake")
+intake_id = "intake_b"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Intake_B"]
+shape = SubResource("RectangleShape2D_intake")
+
+[node name="Intake_C" type="Area2D" parent="RoutingField"]
+position = Vector2(40, 60)
+script = ExtResource("12_intake")
+intake_id = "intake_c"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Intake_C"]
+shape = SubResource("RectangleShape2D_intake")
+
+[node name="MoldArea" type="Node2D" parent="."]
+position = Vector2(200, 450)
+
+[node name="BladeMold" type="Node2D" parent="MoldArea"]
+position = Vector2(-120, 0)
+script = ExtResource("3_mold")
+mold_id = "blade"
+part_type = "blade"
+required_metal = "iron"
+fill_amount = 100.0
+
+[node name="MoldSprite" type="ColorRect" parent="MoldArea/BladeMold"]
+offset_left = -40.0
+offset_top = -30.0
+offset_right = 40.0
+offset_bottom = 30.0
+color = Color(0.3, 0.25, 0.2, 1.0)
+
+[node name="FillBar" type="ProgressBar" parent="MoldArea/BladeMold"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = -40.0
+offset_top = -50.0
+offset_right = 40.0
+offset_bottom = -35.0
+max_value = 100.0
+value = 0.0
+
+[node name="StateLabel" type="Label" parent="MoldArea/BladeMold"]
+offset_left = -40.0
+offset_top = 35.0
+offset_right = 40.0
+offset_bottom = 50.0
+text = "Blade"
+horizontal_alignment = 1
+
+[node name="GuardMold" type="Node2D" parent="MoldArea"]
+position = Vector2(0, 0)
+script = ExtResource("3_mold")
+mold_id = "guard"
+part_type = "guard"
+required_metal = "iron"
+fill_amount = 80.0
+
+[node name="MoldSprite" type="ColorRect" parent="MoldArea/GuardMold"]
+offset_left = -40.0
+offset_top = -30.0
+offset_right = 40.0
+offset_bottom = 30.0
+color = Color(0.3, 0.25, 0.2, 1.0)
+
+[node name="FillBar" type="ProgressBar" parent="MoldArea/GuardMold"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = -40.0
+offset_top = -50.0
+offset_right = 40.0
+offset_bottom = -35.0
+max_value = 100.0
+value = 0.0
+
+[node name="StateLabel" type="Label" parent="MoldArea/GuardMold"]
+offset_left = -40.0
+offset_top = 35.0
+offset_right = 40.0
+offset_bottom = 50.0
+text = "Guard"
+horizontal_alignment = 1
+
+[node name="GripMold" type="Node2D" parent="MoldArea"]
+position = Vector2(120, 0)
+script = ExtResource("3_mold")
+mold_id = "grip"
+part_type = "grip"
+required_metal = "iron"
+fill_amount = 60.0
+
+[node name="MoldSprite" type="ColorRect" parent="MoldArea/GripMold"]
+offset_left = -40.0
+offset_top = -30.0
+offset_right = 40.0
+offset_bottom = 30.0
+color = Color(0.3, 0.25, 0.2, 1.0)
+
+[node name="FillBar" type="ProgressBar" parent="MoldArea/GripMold"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = -40.0
+offset_top = -50.0
+offset_right = 40.0
+offset_bottom = -35.0
+max_value = 100.0
+value = 0.0
+
+[node name="StateLabel" type="Label" parent="MoldArea/GripMold"]
+offset_left = -40.0
+offset_top = 35.0
+offset_right = 40.0
+offset_bottom = 50.0
+text = "Grip"
+horizontal_alignment = 1
+
+[node name="OrderPanel" type="Control" parent="UI"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -180.0
+offset_right = -10.0
+offset_bottom = -10.0
+script = ExtResource("6_orderpanel")
+
+[node name="OrderName" type="Label" parent="UI/OrderPanel"]
+layout_mode = 1
+offset_bottom = 30.0
+text = "Order Name"
+
+[node name="PartList" type="VBoxContainer" parent="UI/OrderPanel"]
+layout_mode = 1
+offset_top = 35.0
+offset_right = 380.0
+offset_bottom = 130.0
+
+[node name="OrderProgress" type="ProgressBar" parent="UI/OrderPanel"]
+layout_mode = 1
+anchors_preset = 0
+offset_top = 135.0
+offset_right = 380.0
+offset_bottom = 155.0
+max_value = 100.0
+value = 0.0
+
+[node name="ResultPanel" type="Control" parent="UI"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -80.0
+offset_right = 120.0
+offset_bottom = 80.0
+script = ExtResource("9_resultpanel")
+
+[node name="PanelBG" type="ColorRect" parent="UI/ResultPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.1, 0.15, 0.95)
+
+[node name="ResultLabel" type="Label" parent="UI/ResultPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -60.0
+offset_right = 100.0
+offset_bottom = -10.0
+text = "Game Complete"
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="UI/ResultPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -50.0
+offset_top = 10.0
+offset_right = 50.0
+offset_bottom = 50.0
+button_mask = 1
+text = "Restart"
+
+[node name="StartButton" type="Button" parent="UI"]
+offset_left = 150.0
+offset_top = 350.0
+offset_right = 250.0
+offset_bottom = 400.0
+button_mask = 1
+text = "Start Game"
