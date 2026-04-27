@@ -55,14 +55,21 @@ func get_gate_state(gate_id: String) -> bool:
 	return gate_states.get(gate_id, false)
 
 func get_mold_for_intake(intake_id: String) -> String:
-	var active_gates = []
+	# BUG-018 fix: first, check if any open gate covers intake_id directly.
+	# If so, route to that intake's mold — no collecting from other gates.
 	for gate_id in GATE_ROUTING.keys():
 		if get_gate_state(gate_id):
 			var gated_intakes = GATE_ROUTING[gate_id]
 			if intake_id in gated_intakes:
-				for g_intake in gated_intakes:
-					if not active_gates.has(g_intake):
-						active_gates.append(g_intake)
+				return INTAKE_TO_MOLD.get(intake_id, "")
+
+	# No gate covers this intake — find the first open gate and use its intakes
+	var active_gates = []
+	for gate_id in GATE_ROUTING.keys():
+		if get_gate_state(gate_id):
+			for g_intake in GATE_ROUTING[gate_id]:
+				if not active_gates.has(g_intake):
+					active_gates.append(g_intake)
 
 	if active_gates.size() > 0:
 		return INTAKE_TO_MOLD.get(active_gates[0], "")
