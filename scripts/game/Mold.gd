@@ -67,6 +67,7 @@ func receive_metal(metal_id: String, amount: float):
 		current_metal = metal_id
 
 	if metal_id != required_metal and not is_contaminated:
+		_trigger_wrong_metal_flash(metal_id)
 		_trigger_contamination(metal_id, amount)
 		return
 
@@ -75,6 +76,7 @@ func receive_metal(metal_id: String, amount: float):
 
 	is_filling = true
 	current_fill += amount
+	_create_receiving_glow(metal_id)
 	_update_display()
 	mold_filled.emit(mold_id, get_fill_percent())
 
@@ -178,6 +180,21 @@ func _create_contamination_effect():
 		var tween = create_tween()
 		tween.tween_property(mold_sprite, "modulate", Color.RED, 0.1)
 		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.3)
+
+func _trigger_wrong_metal_flash(wrong_metal: String):
+	# Distinct pre-contamination flash: orange warning before red contamination
+	if mold_sprite:
+		var tween = create_tween()
+		tween.tween_property(mold_sprite, "modulate", Color.ORANGE, 0.08)
+		tween.tween_property(mold_sprite, "modulate", Color.RED, 0.08)
+
+func _create_receiving_glow(metal_id: String):
+	# Brief bright flash when metal enters the mold
+	if mold_sprite:
+		var color = _get_metal_color(metal_id)
+		var tween = create_tween()
+		tween.tween_property(mold_sprite, "modulate", color * 1.5, 0.1)
+		tween.tween_property(mold_sprite, "modulate", color * 0.7, 0.2)
 
 func _create_complete_effect():
 	if mold_sprite:

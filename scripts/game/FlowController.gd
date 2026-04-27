@@ -87,3 +87,46 @@ func reset_all_gates():
 	for gate_id in gate_states.keys():
 		gate_states[gate_id] = false
 		gate_toggled.emit(gate_id, false)
+
+# Returns {mold_id: String, intake_id: String} for a pour at world_position.
+# mold_id is non-empty when a gate opens a route to a mold.
+# intake_id is non-empty when the pour position targets a blocked intake (waste).
+# Both empty = pour was outside all intake zones (fallback routing).
+func get_mold_for_pour_position(world_position: Vector2) -> Dictionary:
+	var mold_area = get_node_or_null("/root/Main/MoldArea")
+	if not mold_area:
+		return {"mold_id": "", "intake_id": ""}
+
+	var mold_center_x = mold_area.global_position.x
+	var offset_x = world_position.x - mold_center_x
+
+	var pour_intake = ""
+	if offset_x < -60:
+		pour_intake = "intake_a"
+	elif offset_x < 60:
+		pour_intake = "intake_b"
+	else:
+		pour_intake = "intake_c"
+
+	# Check which open gates cover this intake
+	var active_gates = []
+	for gate_id in GATE_ROUTING.keys():
+		if get_gate_state(gate_id):
+			var gated_intakes = GATE_ROUTING[gate_id]
+			if pour_intake in gated_intakes:
+				for g_intake in gated_intakes:
+					if not active_gates.has(g_intake):
+						active_gates.append(g_intake)
+
+	if active_gates.size() > 0:
+		# At least one gate is open and covers this intake zone
+		# Route to the first available mold
+		var mold_id = INTAKE_TO_MOLD.get(active_gates[0], "")
+		return {"mold_id": mold_id, "intake_id": ""}
+
+	# No open gate covers this intake — the pour is wasted (blocked intake)
+	if pour_intake != "":
+		return {"mold_id": "", "intake_id": pour_intake}
+
+	# Pour was outside all intake zones entirely
+	return {"mold_id": "", "intake_id": ""}
