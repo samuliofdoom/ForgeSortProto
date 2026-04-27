@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/GameController.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/game/PourZone.gd" id="2_pourzone"]
@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://scripts/game/PartPopEffect.gd" id="11_partpopeffect"]
 [ext_resource type="Script" path="res://scripts/game/Intake.gd" id="12_intake"]
 [ext_resource type="Script" path="res://scripts/ui/GateToggleUI.gd" id="13_gatetoggleui"]
+[ext_resource type="Script" path="res://scripts/dev/full_gameplay_test.gd" id="14_testrunner"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_intake"]
 size = Vector2(40, 30)
@@ -469,6 +470,10 @@ offset_right = 50.0
 offset_bottom = 50.0
 button_mask = 1
 text = "Restart"
+
+[node name="TestRunner" type="Node2D" parent="."]
+process_mode = 3
+script = ExtResource("14_testrunner")
 
 [node name="StartButton" type="Button" parent="UI"]
 offset_left = 150.0

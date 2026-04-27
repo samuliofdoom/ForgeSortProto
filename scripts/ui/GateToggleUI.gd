@@ -9,6 +9,7 @@ signal gate_toggled(gate_id: String)
 
 var flow_controller: Node
 var gate_buttons: Dictionary = {}
+var _guard_recursion: bool = false
 
 func _ready():
 	flow_controller = get_node_or_null("/root/FlowController")
@@ -29,6 +30,8 @@ func _ready():
 	_update_button_states()
 
 func _on_gate_button_toggled(toggled: bool, button: Button):
+	if _guard_recursion:
+		return
 	var gate_id = _get_gate_id_for_button(button)
 	if gate_id != "" and flow_controller:
 		flow_controller.toggle_gate(gate_id)
@@ -43,12 +46,18 @@ func _on_gate_toggled(gate_id: String, is_open: bool):
 	_update_button_states()
 
 func _update_button_states():
+	if _guard_recursion:
+		return
+	_guard_recursion = true
 	for gate_id in gate_buttons:
 		var btn = gate_buttons[gate_id]
 		if btn:
 			var is_open = flow_controller.get_gate_state(gate_id) if flow_controller else false
-			btn.button_pressed = is_open
+			# Only update if different to avoid triggering toggled signal
+			if btn.button_pressed != is_open:
+				btn.button_pressed = is_open
 			if is_open:
 				btn.modulate = Color.GREEN
 			else:
 				btn.modulate = Color.WHITE
+	_guard_recursion = false
