@@ -35,7 +35,7 @@ func _setup_visuals():
 	# Stream line from top of screen down to pour point
 	_stream_line = Line2D.new()
 	_stream_line.name = "StreamLine"
-	_stream_line.width = stream_width
+	_stream_line.width = _current_stream_width
 	_stream_line.default_color = _get_metal_color(_active_metal)
 	_stream_line.round_precision = 8
 	_stream_line.visible = false
@@ -45,8 +45,8 @@ func _setup_visuals():
 	_glow_rect = ColorRect.new()
 	_glow_rect.name = "StreamGlow"
 	_glow_rect.color = _get_metal_color(_active_metal)
-	_glow_rect.size = Vector2(stream_width * 3, stream_width * 3)
-	_glow_rect.position = Vector2(-stream_width * 1.5, -stream_width * 1.5)
+	_glow_rect.size = Vector2(_current_stream_width * 3, _current_stream_width * 3)
+	_glow_rect.position = Vector2(-_current_stream_width * 1.5, -_current_stream_width * 1.5)
 	_glow_rect.visible = false
 	add_child(_glow_rect)
 
