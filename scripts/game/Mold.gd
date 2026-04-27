@@ -17,6 +17,7 @@ var is_contaminated: bool = false
 var is_complete: bool = false
 var current_metal: String = ""
 var is_filling: bool = false
+var is_locked: bool = false  # true between order complete and next order starting
 
 @onready var fill_bar: ProgressBar = $FillBar
 @onready var state_label: Label = $StateLabel
@@ -37,6 +38,9 @@ func _ready():
 
 	if metal_flow and metal_flow.has_method("register_mold"):
 		metal_flow.register_mold(mold_id, self)
+	if order_manager:
+		order_manager.order_completed.connect(_on_order_completed)
+		order_manager.order_started.connect(_on_order_started)
 
 	_update_display()
 
@@ -55,8 +59,16 @@ func _on_mold_tapped():
 		clear_mold()
 
 func receive_metal(metal_id: String, amount: float):
-	if is_complete:
+	if is_locked:
 		score_manager.add_waste(amount)
+		return
+
+	if is_complete:
+		if metal_id != required_metal and not is_contaminated:
+			_trigger_wrong_metal_flash(metal_id)
+			_trigger_contamination(metal_id, amount)
+		else:
+			score_manager.add_waste(amount)
 		return
 
 	if not is_contaminated and current_fill >= fill_amount:
@@ -127,6 +139,17 @@ func get_mold_id() -> String:
 
 func get_part_type() -> String:
 	return part_type
+
+func _on_order_completed(_completed_order: OrderDefinition, _score: int):
+	is_locked = true
+
+func _on_order_started(new_order: OrderDefinition):
+	is_locked = false
+	if is_complete or is_contaminated:
+		clear_mold()
+	if new_order.part_requests.has(part_type):
+		required_metal = new_order.part_requests[part_type].required_metal
+	_update_display()
 
 func _update_display():
 	if fill_bar:

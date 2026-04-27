@@ -268,6 +268,13 @@ position = Vector2(-120, 60)
 script = ExtResource("12_intake")
 intake_id = "intake_a"
 
+[node name="Visual" type="ColorRect" parent="RoutingField/Intake_A"]
+offset_left = -20.0
+offset_top = -15.0
+offset_right = 20.0
+offset_bottom = 15.0
+color = Color(0.75, 0.45, 0.3, 0.4)
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Intake_A"]
 shape = SubResource("RectangleShape2D_intake")
 
@@ -276,6 +283,13 @@ position = Vector2(-40, 60)
 script = ExtResource("12_intake")
 intake_id = "intake_b"
 
+[node name="Visual" type="ColorRect" parent="RoutingField/Intake_B"]
+offset_left = -20.0
+offset_top = -15.0
+offset_right = 20.0
+offset_bottom = 15.0
+color = Color(0.75, 0.45, 0.3, 0.4)
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Intake_B"]
 shape = SubResource("RectangleShape2D_intake")
 
@@ -283,6 +297,13 @@ shape = SubResource("RectangleShape2D_intake")
 position = Vector2(40, 60)
 script = ExtResource("12_intake")
 intake_id = "intake_c"
+
+[node name="Visual" type="ColorRect" parent="RoutingField/Intake_C"]
+offset_left = -20.0
+offset_top = -15.0
+offset_right = 20.0
+offset_bottom = 15.0
+color = Color(0.75, 0.45, 0.3, 0.4)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RoutingField/Intake_C"]
 shape = SubResource("RectangleShape2D_intake")
