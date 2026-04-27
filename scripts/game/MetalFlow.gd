@@ -10,7 +10,7 @@ var score_manager: Node
 var molds: Dictionary = {}
 
 var pour_accumulator: float = 0.0
-const POUR_AMOUNT_PER_SECOND: float = 50.0
+const BASE_POUR_AMOUNT_PER_SECOND: float = 50.0
 
 func _ready():
 	metal_source = get_node("/root/MetalSource")
@@ -20,7 +20,10 @@ func _ready():
 
 func _process(delta):
 	if active_pour_zone and active_pour_zone.is_pouring:
-		pour_accumulator += POUR_AMOUNT_PER_SECOND * delta
+		var metal_def = metal_source.get_selected_metal_data() if metal_source else null
+		var speed_mult = metal_def.speed if metal_def else 1.0
+		var pour_rate = BASE_POUR_AMOUNT_PER_SECOND * speed_mult
+		pour_accumulator += pour_rate * delta
 
 		while pour_accumulator >= 1.0:
 			var amount = floor(pour_accumulator)

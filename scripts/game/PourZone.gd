@@ -5,8 +5,8 @@ signal pour_position_changed(world_pos: Vector2)
 signal pour_ended()
 
 @export var zone_width: float = 380.0
-@export var stream_width: float = 8.0
-@export var particle_interval: float = 0.04
+@export var base_stream_width: float = 8.0
+@export var base_particle_interval: float = 0.04
 @export var particle_speed: float = 500.0
 
 var is_pouring: bool = false
@@ -21,6 +21,10 @@ var _particle_container: Node2D
 var _last_particle_time: float = 0.0
 var _active_metal: String = "iron"
 var _screen_height: float = 720.0
+
+# Dynamic pour params driven by metal definition
+var _current_stream_width: float = 8.0
+var _current_particle_interval: float = 0.04
 
 func _ready():
 	metal_source = get_node_or_null("/root/MetalSource")
@@ -51,9 +55,22 @@ func _setup_visuals():
 	_particle_container.name = "ParticleContainer"
 	add_child(_particle_container)
 
-	# Metal selection changes → update stream color
+	# Metal selection changes → update stream color and properties
 	if metal_source:
 		metal_source.metal_selected.connect(_on_metal_selected)
+
+func _apply_metal_properties():
+	# Read metal definition to update pour feel
+	if metal_source:
+		var metal_def = metal_source.get_selected_metal_data()
+		if metal_def:
+			# spread: 1.0 = base width, higher = wider stream
+			_current_stream_width = base_stream_width * metal_def.spread
+			# speed: 1.0 = base interval, higher = faster particles (shorter interval)
+			_current_particle_interval = base_particle_interval / metal_def.speed
+		else:
+			_current_stream_width = base_stream_width
+			_current_particle_interval = base_particle_interval
 
 func _process(delta):
 	if not is_pouring:
@@ -64,7 +81,7 @@ func _process(delta):
 
 	# Spawn particles dripping down
 	_last_particle_time += delta
-	if _last_particle_time >= particle_interval:
+	if _last_particle_time >= _current_particle_interval:
 		_last_particle_time = 0.0
 		_spawn_drip_particle()
 
@@ -81,11 +98,12 @@ func _update_stream_visuals():
 	_stream_line.add_point(top_pos)
 	_stream_line.add_point(bottom_pos)
 	_stream_line.default_color = _get_metal_color(_active_metal)
-	_stream_line.width = stream_width
+	_stream_line.width = _current_stream_width
 
 	# Glow follows pour point
-	_glow_rect.global_position = pour_origin + Vector2(-stream_width * 1.5, -stream_width * 1.5)
+	_glow_rect.global_position = pour_origin + Vector2(-_current_stream_width * 1.5, -_current_stream_width * 1.5)
 	_glow_rect.color = _get_metal_color(_active_metal)
+	_glow_rect.size = Vector2(_current_stream_width * 3, _current_stream_width * 3)
 
 	# Pulse glow alpha
 	var pulse = (sin(Time.get_ticks_msec() * 0.01) + 1.0) * 0.25 + 0.3
@@ -100,8 +118,9 @@ func _spawn_drip_particle():
 	drip.size = Vector2(3, 3)
 
 	# Start near pour point with slight horizontal scatter
-	var start_x = pour_origin.x + randf_range(-stream_width, stream_width)
-	drip.position = Vector2(start_x, pour_origin.y - stream_width)
+	var scatter = _current_stream_width * 0.5
+	var start_x = pour_origin.x + randf_range(-scatter, scatter)
+	drip.position = Vector2(start_x, pour_origin.y - _current_stream_width)
 	_particle_container.add_child(drip)
 
 	# Fall toward mold area
@@ -140,6 +159,9 @@ func _start_pour(pos: Vector2):
 		metal_source.start_pour()
 		_active_metal = metal_source.get_selected_metal()
 
+	# Apply metal-specific pour properties (speed, spread)
+	_apply_metal_properties()
+
 	if metal_flow:
 		metal_flow.set_active_stream(self)
 
@@ -159,6 +181,7 @@ func _end_pour():
 
 func _on_metal_selected(metal_id: String):
 	_active_metal = metal_id
+	_apply_metal_properties()
 	if is_pouring:
 		_stream_line.default_color = _get_metal_color(metal_id)
 		_glow_rect.color = _get_metal_color(metal_id)

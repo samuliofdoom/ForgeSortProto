@@ -17,6 +17,8 @@ func _ready():
 	order_manager.game_completed.connect(_on_game_completed)
 	order_manager.order_started.connect(_on_order_started)
 	order_manager.order_completed.connect(_on_order_completed)
+	if score_manager:
+		score_manager.game_over.connect(_on_game_over)
 
 	_setup_molds()
 
@@ -28,6 +30,10 @@ func _on_start_pressed():
 
 func _on_game_completed(results: Dictionary):
 	start_button.show()
+
+func _on_game_over(final_score: int, waste_percent: float):
+	start_button.show()
+	# TODO: show a dedicated game-over panel with final_score
 
 func _on_order_started(order: OrderDefinition):
 	_update_mold_requirements_for_order(order)

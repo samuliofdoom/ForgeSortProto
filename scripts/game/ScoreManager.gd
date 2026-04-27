@@ -3,6 +3,7 @@ extends Node
 signal score_updated(total: int)
 signal waste_updated(waste_percent: float)
 signal contamination_penalty(penalty: int)
+signal game_over(final_score: int, waste_percent: float)
 
 var total_score: int = 0
 var waste_units: float = 0.0
@@ -13,6 +14,7 @@ const WASTE_PENALTY_PER_UNIT: float = 1.0
 const CONTAMINATION_PENALTY: int = 25
 const SPEED_BONUS: int = 50
 const SPEED_THRESHOLD_SECONDS: float = 30.0
+const WASTE_METER_MAX: float = 100.0
 
 func _ready():
 	start_time = Time.get_ticks_msec()
@@ -29,8 +31,13 @@ func add_waste(amount: float):
 	waste_units += amount
 	var waste_penalty = waste_units * WASTE_PENALTY_PER_UNIT
 	total_score = max(0, total_score - int(waste_penalty))
-	waste_updated.emit(waste_units)
+	var waste_percent = clamp(waste_units / WASTE_METER_MAX * 100.0, 0.0, 100.0)
+	waste_updated.emit(waste_percent)
 	score_updated.emit(total_score)
+
+	# Hard fail at 100% waste meter
+	if waste_units >= WASTE_METER_MAX:
+		emit_signal("game_over", total_score, waste_percent)
 
 func add_contamination():
 	contamination_count += 1
