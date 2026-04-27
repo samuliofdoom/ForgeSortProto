@@ -2,8 +2,6 @@ extends Node2D
 
 signal part_popped(part_id: String, world_pos: Vector2)
 
-var part_pop_scene = preload("res://scripts/ui/PartPopLabel.gd")
-
 func _ready():
 	var order_manager = get_node("/root/OrderManager")
 	order_manager.order_completed.connect(_on_order_completed)

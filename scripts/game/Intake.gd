@@ -53,7 +53,7 @@ func _on_area_entered(area: Area2D):
 		intake_entered.emit(area)
 		_trigger_intake_glow(metal_id)
 
-func _on_flow_routed(intake_id_from_signal: String, mold_id: String, metal_id: String, amount: float):
+func _on_flow_routed(intake_id_from_signal: String, _mold_id: String, metal_id: String, _amount: float):
 	if intake_id_from_signal == intake_id:
 		_trigger_intake_glow(metal_id)
 

@@ -44,9 +44,9 @@ func _create_stream_visuals():
 	stream_line = Line2D.new()
 	stream_line.width = stream_width
 	stream_line.default_color = _get_metal_color(active_metal)
-	stream_line.begin_cap_mode = Line2D.LINE_CAP_MODE_ROUND
-	stream_line.end_cap_mode = Line2D.LINE_CAP_MODE_ROUND
-	stream_line.joint_mode = Line2D.LINE_JOINT_MODE_ROUND
+	stream_line.begin_cap_mode = Line2D.LINE_CAP_MODE_SQUARE
+	stream_line.end_cap_mode = Line2D.LINE_CAP_MODE_SQUARE
+	stream_line.joint_mode = Line2D.LINE_JOINT_MODE_BEVEL
 	add_child(stream_line)
 
 	# Glow rect at pour point

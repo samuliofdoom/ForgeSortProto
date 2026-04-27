@@ -29,7 +29,7 @@ func _ready():
 
 	_update_button_states()
 
-func _on_gate_button_toggled(toggled: bool, button: Button):
+func _on_gate_button_toggled(_toggled: bool, button: Button):
 	if _guard_recursion:
 		return
 	var gate_id = _get_gate_id_for_button(button)
@@ -42,7 +42,7 @@ func _get_gate_id_for_button(button: Button) -> String:
 			return gate_id
 	return ""
 
-func _on_gate_toggled(gate_id: String, is_open: bool):
+func _on_gate_toggled(_gate_id: String, _is_open: bool):
 	_update_button_states()
 
 func _update_button_states():

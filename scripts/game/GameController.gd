@@ -28,7 +28,7 @@ func _on_start_pressed():
 	flow_controller.reset_all_gates()
 	order_manager.start_game()
 
-func _on_game_completed(results: Dictionary):
+func _on_game_completed(_results: Dictionary):
 	start_button.show()
 
 func _on_game_over(final_score: int, waste_percent: float):
@@ -38,7 +38,7 @@ func _on_game_over(final_score: int, waste_percent: float):
 func _on_order_started(order: OrderDefinition):
 	_update_mold_requirements_for_order(order)
 
-func _on_order_completed(order: OrderDefinition, score: int):
+func _on_order_completed(_order: OrderDefinition, _score: int):
 	pass
 
 func _reset_game():

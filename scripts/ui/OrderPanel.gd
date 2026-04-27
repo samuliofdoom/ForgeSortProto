@@ -20,10 +20,10 @@ func _on_order_started(order: OrderDefinition):
 	current_order = order
 	_update_display()
 
-func _on_order_completed(order: OrderDefinition, score: int):
+func _on_order_completed(_order: OrderDefinition, _score: int):
 	_update_display()
 
-func _on_completed_parts_changed(parts: Array[String]):
+func _on_completed_parts_changed(_parts: Array[String]):
 	_update_display()
 
 func _update_display():
