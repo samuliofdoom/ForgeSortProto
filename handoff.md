@@ -1,106 +1,162 @@
-# ForgeSortProto - Session Handoff
+# ForgeSortProto — Agent Handoff
 
-## Issue Tracker
-Beads (`bd`) is the issue tracker. Run `bd ready` to see current issues.
-**Status**: All issues closed.
+**Last updated**: 2026-04-27
+**Branch**: master (local only — no remote)
+**Commit**: `932111a` — "Test: inject TestRunner into Main.tscn, fix GateToggleUI infinite recursion"
 
 ---
 
-## Project State
-ForgeSortProto is a Godot 4.6.2 forge-sorting game. Validation passes, project loads headless cleanly.
+## Project Status: CORE LOOP COMPLETE ✓
 
-### Git
-- Local commit: `954d2d6` "Fix Godot project parse errors"
-- `.gitignore` updated to exclude `node_modules/` and `package-lock.json`
-- No remote configured — `git push` will fail until remote is added
+All major features implemented and verified via 9-phase headless test.
 
-### Files (committed to git)
-- `scenes/Main.tscn` — Main scene, load_steps=15, parses correctly
-- `scripts/data/` — GameData.gd, MetalDefinition.gd, MoldDefinition.gd, OrderDefinition.gd
-- `scripts/game/` — GameController, MetalFlow, FlowController, Mold, Gate, Intake, PourZone, OrderManager, ScoreManager, PartPopEffect
-- `scripts/ui/` — MetalSelector, OrderPanel, ScoreDisplay, WasteMeter, ResultPanel, GateToggleUI, PartPopLabel
+| Feature | Status |
+|---------|--------|
+| Pour zone with visual feedback | ✓ |
+| Metal source (iron/steel/gold) | ✓ |
+| Gate routing (4 gates) | ✓ |
+| Mold fill/complete/contamination | ✓ |
+| Order system (3 orders) | ✓ |
+| Score tracking + speed bonus | ✓ |
+| Waste meter + game over | ✓ |
+| P2: metal speed/spread differentiation | ✓ |
+| P3: waste meter hard fail | ✓ |
+| Headless gameplay test | ✓ |
 
-### Autoloads (in project.godot)
+---
+
+## Godot MCP Usage
+
+**Project path format**: `/mnt/g/...` (WSL/Linux absolute path)
+
+| Tool | Purpose |
+|------|---------|
+| `mcp_godot_get_godot_version` | Verify engine running |
+| `mcp_godot_get_project_info` | Get project metadata |
+| `mcp_godot_get_scene_tree` | Get full scene hierarchy |
+| `mcp_godot_call_node_method` | Call methods on scene nodes |
+| `mcp_godot_run_project` | **Opens editor window** (not headless) |
+
+**Note**: `mcp_godot_run_project` always opens the Godot editor, never runs headless. For headless testing, use the console exe directly (see below).
+
+---
+
+## Running the Game
+
+### Normal play
+```bash
+./GodotEngine/Godot_v4.6.2-stable_win64_console.exe --path .
+# or open scenes/Main.tscn in Godot editor
 ```
-GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
+
+### Headless gameplay test (9 phases)
+```bash
+./GodotEngine/Godot_v4.6.2-stable_win64_console.exe \
+    --headless --path . --quit-after 300
+```
+Test node is invisible (`visible=false`), normal play unaffected.
+
+### Smoke check (parse errors only)
+```bash
+./GodotEngine/Godot_v4.6.2-stable_win64_console.exe \
+    --headless --path . --script scripts/dev/smoke_check.gd --quit-after 10
 ```
 
-### Architecture
+---
+
+## Key Node Paths
+
+| Node | Path |
+|------|------|
+| Main | `/root/Main` |
+| GameController | `/root/Main` (script on Main node) |
+| MoldArea | `/root/Main/MoldArea` |
+| BladeMold | `/root/Main/MoldArea/BladeMold` |
+| GuardMold | `/root/Main/MoldArea/GuardMold` |
+| GripMold | `/root/Main/MoldArea/GripMold` |
+| StartButton | `/root/Main/UI/StartButton` |
+| MetalSource | `/root/MetalSource` (autoload) |
+| FlowController | `/root/FlowController` (autoload) |
+| ScoreManager | `/root/ScoreManager` (autoload) |
+| OrderManager | `/root/OrderManager` (autoload) |
+
+---
+
+## Autoloads (in project.godot)
+
 ```
-PourZone → MetalSource → MetalFlow → FlowController → Mold → OrderManager
+OrderManager, MetalFlow, ScoreManager, GameData, FlowController, MetalSource, GameController
 ```
 
-### Orders
+**Important**: GameController is NOT an autoload. It is a script attached to the Main node. Access via `get_node("/root/Main")`.
+
+---
+
+## Orders
+
 | # | Name | Parts | Value |
 |---|------|-------|-------|
-| 1 | Iron Sword | iron_blade/guard/grip | 100 |
-| 2 | Steel Sword | steel_blade, iron guard/grip | 160 |
+| 1 | Iron Sword | iron_blade, iron_guard, iron_grip | 100 |
+| 2 | Steel Sword | steel_blade, iron_guard, iron_grip | 160 |
 | 3 | Noble Sword | steel_blade, gold_guard, iron_grip | 250 |
 
----
-
-## Validation
-```bash
-./validate.sh  # PASSES
-timeout 8 godot --headless --path "G:/AI_STUFF/Games/ForgeSortProto" --quit-after 5  # No parse errors
-```
+Speed bonus: +50 pts if completed under 30 seconds.
 
 ---
 
-## Common Gotchas
-- Gate uses `_input(event)` not `Area2D` for click detection
-- `Mold.clear_mold()` only on contaminated state
-- `ScoreManager.add_waste()` vs `add_contamination()`
-- `input_pickable = true` required on Gate StaticBody2D
-- `load_steps=N` must equal ext_resources + sub_resources
-- `@onready var x = $Y` — Y must exist in scene
-- Signal `.connect(_on_foo)` → `func _on_foo()` must be in SAME file
+## Bug Fixes Applied
+
+### GateToggleUI infinite recursion (fixed in `932111a`)
+`_update_button_states()` set `button_pressed = is_open` which fires `toggled` signal → `toggle_gate()` → `gate_toggled.emit()` → `_update_button_states()` → infinite loop.
+
+**Fix**: `_guard_recursion` bool flag + only set `button_pressed` when value differs.
+
+### PourZone parse error (fixed in `6296404`)
+`stream_width` variable was declared as `_current_stream_width`. Fixed all references.
+
+### FlowController gate routing (fixed in `0a1b291`)
+Gate routing now uses `get_mold_for_pour_position()` which respects gate open/closed state.
 
 ---
 
-## Godot MCP / OpenCode Issue ⚠️
+## Dev Tools
 
-### Problem
-OpenCode MCP refuses to load the godot entry from config. Error:
-```
-ERROR service=mcp key=godot Ignoring MCP config entry without type
-```
-The godot config is valid JSON with `type: "local"`, but opencode silently drops it during config resolution.
-
-### Config (in `/home/samuli/.config/opencode/opencode.json`)
-```json
-"godot": {
-  "type": "local",
-  "command": [
-    "node",
-    "/mnt/g/AI_STUFF/Games/ForgeSortProto/node_modules/@coding-solo/godot-mcp/build/index.js"
-  ],
-  "enabled": true,
-  "environment": {
-    "GODOT_PATH": "/mnt/g/GodotEngine/Godot_v4.6.2-stable_win64.exe",
-    "GODOT_PROJECT_PATH": "/mnt/g/AI_STUFF/Games/ForgeSortProto",
-    "strictPathValidation": false
-  }
-}
-```
-
-### Manual Test (works)
-```bash
-GODOT_PATH="/mnt/g/GodotEngine/Godot_v4.6.2-stable_win64.exe" \
-node /mnt/g/AI_STUFF/Games/ForgeSortProto/node_modules/@coding-solo/godot-mcp/build/index.js
-# Outputs tools list correctly
-```
-
-### Status
-- MCP issue is an opencode config resolution problem, NOT a project code problem
-- Project code is fine — validated and loads cleanly
-- All other MCP servers (jcodemunch, jdocmunch, sentry, context7) load fine
-- This remains unresolved as of handoff
+| Tool | Location | Purpose |
+|------|----------|---------|
+| `validate.sh` | root | 5-check validation (bash + smoke + Godot version + parse + git) |
+| `smoke_check.gd` | `scripts/dev/` | Parse error checker (SceneTree-based, headless) |
+| `full_gameplay_test.gd` | `scripts/dev/` | 9-phase gameplay test (Node2D, injected into Main.tscn) |
+| TestRunner.tscn | `scenes/dev/` | Test scene stub |
 
 ---
 
-## Next Steps
-1. **Push to remote** — add `git remote add origin <url>` when network available
-2. **Debug Godot MCP** — opencode config resolution issue (separate from project)
-3. **Manual game test** — run in Godot editor to verify runtime behavior
-4. **Feature work** — no open issues, check `bd ready` for new work
+## Known Gotchas
+
+- **GameController is NOT an autoload** — it's on the Main node. Do not use `get_node("/root/GameController")`.
+- **`--script` mode does NOT boot the project** — no autoloads, no SceneTree. Use `--scene` or inject into Main.tscn.
+- **GateToggleUI recursion** — `button_pressed = x` fires `toggled(x)`. Never set it inside a `toggled` handler without a guard.
+- **`--quit-after N`** — only works with the console exe, not the GUI exe.
+- **jcodemunch index goes stale** — re-index with `index_folder(force=true)` when disk files differ from index.
+
+---
+
+## Remaining Work
+
+No remaining bugs. Core game loop is complete and verified.
+
+Future enhancements (not in current scope):
+- Save/load system
+- Sound effects and music
+- Additional orders or game modes
+- Touch/mobile input support
+
+---
+
+## Recent Commits
+
+| Commit | Description |
+|--------|-------------|
+| `932111a` | Test: inject TestRunner into Main.tscn, fix GateToggleUI infinite recursion |
+| `6296404` | Fix PourZone parse error + gameplay test script |
+| `5e38b7f` | P2: metal differentiation + P3: waste meter game over |
+| `0a1b291` | Fix gate routing and add visual feedback layer |
