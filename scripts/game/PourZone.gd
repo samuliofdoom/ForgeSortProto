@@ -29,6 +29,9 @@ var _current_particle_interval: float = 0.04
 func _ready():
 	metal_source = get_node_or_null("/root/MetalSource")
 	metal_flow = get_node_or_null("/root/MetalFlow")
+	var flow_controller = get_node_or_null("/root/FlowController")
+	if flow_controller:
+		flow_controller.gate_toggled.connect(_on_gate_toggled)
 	_setup_visuals()
 
 func _setup_visuals():
@@ -178,6 +181,15 @@ func _end_pour():
 		metal_source.stop_pour()
 	_hide_stream_visuals()
 	pour_ended.emit()
+
+func _on_gate_toggled(_gate_id: String, _state: bool):
+	# Gate changed mid-pour — stop the current pour
+	if is_pouring:
+		is_pouring = false
+		_hide_stream_visuals()
+		if metal_source:
+			metal_source.stop_pour()
+		pour_ended.emit()
 
 func _on_metal_selected(metal_id: String):
 	_active_metal = metal_id
