@@ -1,6 +1,7 @@
 # Forge Sort Proto — Agent Context
 
 **Godot**: `G:\GodotEngine\Godot_v4.6.2-stable_win64.exe`
+**Godot (headless)**: `G:\GodotEngine\Godot_v4.6.2-stable_win64_console.exe`
 
 ---
 
@@ -61,6 +62,8 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 | `scripts/game/Gate.gd` | Toggle (input_pickable=true) |
 | `scripts/game/PourZone.gd` | Hold/sweep input |
 | `scripts/ui/GateToggleUI.gd` | G1-G4 buttons |
+| `scripts/dev/smoke_check.gd` | Full compilation check (`.new()` all game/UI scripts) |
+| `scripts/dev/detect_unused_params.py` | Static checker for unused function parameters |
 
 ---
 
@@ -78,6 +81,8 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 2. `load_steps=N` must equal ext_resources + sub_resources
 3. `@onready var x = $Y` — Y must exist in scene
 4. Signal `.connect(_on_foo)` → `func _on_foo()` must be in SAME file
+5. When prefixing a signal callback param with `_`, update the body too (e.g. `_score` not just `score` in signature — body must also use `_score`)
+6. `smoke_check.gd` skips data definitions (OrderDefinition, MoldDefinition, MetalDefinition, GameData) — they have required `_init()` args and can only be `load()`ed, not `.new()`ed
 
 ---
 
@@ -85,17 +90,19 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 
 **Before marking any ticket done**, verify ALL of the following:
 
-1. **Run `./validate.sh`** — must pass all 6 checks
+1. **Run `./validate.sh`** — must pass all 8 checks
 2. **Open changed scripts in Godot editor** — Problems panel must show zero warnings or errors
 3. **Run headless gameplay test** — `GodotEngine/Godot_v4.6.2-stable_win64_console.exe --headless --path . --quit-after 300` must exit 0
 4. **Run smoke check** — `GodotEngine/Godot_v4.6.2-stable_win64_console.exe --headless --path . --script scripts/dev/smoke_check.gd --quit-after 10` must exit 0
 
 **Common GDScript warnings to watch for:**
-- `unused_parameter` — prefix unused signal callback params with `_`
+- `unused_parameter` — prefix unused signal callback params with `_`, and update body references too
 - `standalone_ternary` — ternary result must be assigned: `x = a if cond else b`
 - `unused_signal` — signals with no `connect()` call are intentional (e.g. `part_produced` in Mold.gd), but verify before ignoring
 - `invalid_constant` — Godot 4.6.2 Line2D uses `LINE_CAP_MODE_SQUARE` not `ROUND`, `LINE_JOINT_MODE_BEVEL` not `ROUND`
 - `unused_variable` / `unused_local_variable` — remove or prefix with `_`
+
+**The static unused-param checker (`scripts/dev/detect_unused_params.py`) catches these at validate.sh time — do NOT disable Check 8.**
 
 ---
 
@@ -103,6 +110,24 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 - Gate uses `_input(event)` not `Area2D` for click detection
 - `Mold.clear_mold()` only on contaminated state
 - `ScoreManager.add_waste()` vs `add_contamination()`
+- MCP headless polling (`mcp_godot_run_project` + `get_debug_output`) does NOT work — Godot process dies between tool calls; use `smoke_check.gd` + `validate.sh` instead
+
+---
+
+## validate.sh — 8 Checks
+
+| # | Check | Fail condition |
+|---|-------|----------------|
+| 1 | Signal handler coverage | `grep -c connect` mismatch vs registered handlers |
+| 2 | Scene `load_steps` | ext + sub != load_steps |
+| 3 | Script `class_name` references | referenced class missing from project |
+| 4 | Autoload singletons | autoload .gd file missing |
+| 5 | **Full compilation** | `smoke_check.gd` stderr contains "Warning" or "ERROR" |
+| 6 | Parse errors | `--check-only` returns non-zero |
+| 7 | gdlint | SKIPPED (pip blocked on this system) |
+| 8 | **Static unused-param check** | `detect_unused_params.py` exits non-zero |
+
+---
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
