@@ -18,7 +18,8 @@ func _ready():
 func start_game():
 	current_order_index = 0
 	completed_parts.clear()
-	score_manager.reset() if score_manager else null
+	if score_manager:
+		score_manager.reset()
 	start_next_order()
 
 func start_next_order():

@@ -42,8 +42,10 @@ func _on_order_completed(_order: OrderDefinition, _score: int):
 	pass
 
 func _reset_game():
-	score_manager.reset() if score_manager else null
-	flow_controller.reset_all_gates() if flow_controller else null
+	if score_manager:
+		score_manager.reset()
+	if flow_controller:
+		flow_controller.reset_all_gates()
 
 func _setup_molds():
 	var mold_area = get_node_or_null("MoldArea")

@@ -5,6 +5,11 @@ signal part_popped(part_id: String, world_pos: Vector2)
 func _ready():
 	var order_manager = get_node("/root/OrderManager")
 	order_manager.order_completed.connect(_on_order_completed)
+	# Suppress unused_signal warning — declared for potential future use
+	part_popped.connect(_noop)
+
+func _noop(_part_id: String = "", _world_pos: Vector2 = Vector2.ZERO):
+	pass
 
 func _on_order_completed(order: OrderDefinition, score: int):
 	var mold_area = get_node_or_null("/root/Main/MoldArea")

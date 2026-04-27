@@ -42,7 +42,8 @@ func _get_gate_id_for_button(button: Button) -> String:
 			return gate_id
 	return ""
 
-func _on_gate_toggled(_gate_id: String, _is_open: bool):
+func _on_gate_toggled(_gate_id: String, _state: bool):
+	# gate_id and state unused — we re-read all gate states directly via flow_controller
 	_update_button_states()
 
 func _update_button_states():

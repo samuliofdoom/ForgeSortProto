@@ -14,6 +14,7 @@ const BASE_POUR_AMOUNT_PER_SECOND: float = 50.0
 
 func _ready():
 	metal_source = get_node("/root/MetalSource")
+	metal_poured.connect(_noop)
 	game_data = get_node("/root/GameData")
 	flow_controller = get_node("/root/FlowController")
 	score_manager = get_node("/root/ScoreManager")
@@ -38,6 +39,9 @@ func register_mold(mold_id: String, mold: Node):
 	if flow_controller:
 		flow_controller.register_mold(mold_id, mold)
 
+func _noop(_id: String = "", _pos: Vector2 = Vector2.ZERO, _amount: float = 0.0):
+	pass
+
 func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 	# Ask FlowController which mold to route to, given pour position and gate state
 	if flow_controller and flow_controller.has_method("get_mold_for_pour_position"):
@@ -49,7 +53,8 @@ func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 			_route_fallback(metal_id, pour_pos, amount)
 		else:
 			# No intake reachable — full waste
-			score_manager.add_waste(amount) if score_manager else null
+			if score_manager:
+				score_manager.add_waste(amount)
 	else:
 		# Fallback: use position-based routing (original behavior when FlowController lacks new API)
 		var intake_id = _get_intake_for_position(pour_pos)

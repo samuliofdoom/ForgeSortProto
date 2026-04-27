@@ -37,7 +37,7 @@ func add_waste(amount: float):
 
 	# Hard fail at 100% waste meter
 	if waste_units >= WASTE_METER_MAX:
-		emit_signal("game_over", total_score, waste_percent)
+		game_over.emit(total_score, waste_percent)
 
 func add_contamination():
 	contamination_count += 1

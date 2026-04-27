@@ -14,7 +14,7 @@ func _ready():
 func _on_waste_updated(_waste_amount: float):
 	_update_display()
 
-func _on_score_updated(total_score: int):
+func _on_score_updated(_total_score: int):
 	_update_display()
 
 func _update_display(waste_amount: float = 0.0):

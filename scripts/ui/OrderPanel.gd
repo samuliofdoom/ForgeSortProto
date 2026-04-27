@@ -60,4 +60,7 @@ func _update_display():
 
 	var total_parts = current_order.parts.size()
 	var done_parts = completed.size()
-	order_progress.value = (done_parts / float(total_parts)) * 100.0 if total_parts > 0 else 0.0
+	if total_parts > 0:
+		order_progress.value = (done_parts / float(total_parts)) * 100.0
+	else:
+		order_progress.value = 0.0

@@ -23,6 +23,7 @@ const GATE_ROUTING: Dictionary = {
 
 func _ready():
 	_setup_gates()
+	# Note: stream_entered_intake signal was never declared — removed spurious connect
 
 func _setup_gates():
 	for gate_id in ["gate_01", "gate_02", "gate_03", "gate_04"]:
