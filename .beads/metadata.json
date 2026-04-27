@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "embedded",
-  "dolt_database": "ForgeSortProto",
-  "project_id": "b9e5b876-4370-4a01-8ce5-51212ab2fa6e"
-}

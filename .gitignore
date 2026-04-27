@@ -10,3 +10,6 @@ package-lock.json
 .dolt/
 *.db
 .beads-credential-key
+
+# Beads issue tracking (Linux filesystem symlink)
+.beads/
