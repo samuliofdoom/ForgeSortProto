@@ -108,3 +108,51 @@ Dev scripts can be tested individually:
 ## Next Session
 
 Run `./validate.sh` first. If all pass, game is clean.
+
+---
+
+## Session: 2026-04-28 (Evening) — RID Leak Fixes in Test Scripts
+
+### What We Did
+
+Thorough MCP testing revealed two test scripts leaking renderer resources (RIDs) on quit:
+
+**`dev/test_scene_load.gd`** and **`scripts/dev/verify_game_loads.gd`** both instantiated `Main.tscn` via `preload().instantiate()` or `load().instantiate()` but called `quit()` without cleaning up the scene tree first. This leaked:
+- RID allocations for physics bodies, areas, shapes
+- Canvas and CanvasItem RIDs
+- TextServer resources
+- ObjectDB instances
+
+**Fix**: Call `inst.queue_free()` before `quit()` in both scripts.
+
+Also confirmed `dev/ProblemReader.gd` is `@tool extends EditorPlugin` — it can ONLY run inside the Godot editor. Running it headless always produces "Class 'EditorPlugin' can only be instantiated by editor". This is expected behavior, not an error.
+
+### MCP Testing Findings
+
+Working MCP tools for ForgeSortProto:
+- `get_godot_version` ✓
+- `get_project_info` ✓
+- `list_projects` ✓
+
+Non-functional (method not found on this MCP server):
+- `list_prompts`
+- `list_resources`
+
+MCP polling (`run_project` → `get_debug_output`) does NOT work — Godot process dies between tool calls. Documented in AGENTS.md.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `dev/test_scene_load.gd` | Added `inst.queue_free()` before `quit()` |
+| `scripts/dev/verify_game_loads.gd` | Added cleanup block before `quit()` |
+| `handoff.md` | Updated with MCP status, RID leak note, debug mode info |
+
+### Final State
+
+- `validate.sh`: 8/8 pass
+- `smoke_check.gd`: 23/23 scripts pass
+- `dev/test_scene_load.gd`: EXIT 0, no RID leaks
+- `scripts/dev/verify_game_loads.gd`: EXIT 0, no RID leaks
+- Game (no --script): clean EXIT 0
+- Debug mode: zero warnings, zero errors
