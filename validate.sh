@@ -4,7 +4,7 @@
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
-GODOT_EXE="${GODOT_EXE:-${PROJECT_DIR}/GodotEngine/Godot_v4.6.2-stable_win64_console.exe}"
+GODOT_EXE="${GODOT_EXE:-${HOME}/.local/bin/godot}"
 
 ERRORS=0
 

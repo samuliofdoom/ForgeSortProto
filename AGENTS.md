@@ -1,7 +1,7 @@
 # Forge Sort Proto — Agent Context
 
-**Godot**: `G:\GodotEngine\Godot_v4.6.2-stable_win64.exe`
-**Godot (headless)**: `G:\GodotEngine\Godot_v4.6.2-stable_win64_console.exe`
+**Godot**: `~/.local/bin/godot` (Linux native build 4.6.2)
+**Godot (editor)**: `G:\GodotEngine\Godot_v4.6.2-stable_win64.exe` (Windows)
 
 ---
 
@@ -90,10 +90,10 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 
 **Before marking any ticket done**, verify ALL of the following:
 
-1. **Run `./validate.sh`** — must pass all 8 checks
+1. **Run `./validate.sh`** — must pass all 9 checks
 2. **Open changed scripts in Godot editor** — Problems panel must show zero warnings or errors
-3. **Run headless gameplay test** — `GodotEngine/Godot_v4.6.2-stable_win64_console.exe --headless --path . --quit-after 300` must exit 0
-4. **Run smoke check** — `GodotEngine/Godot_v4.6.2-stable_win64_console.exe --headless --path . --script scripts/dev/smoke_check.gd --quit-after 10` must exit 0
+3. **Run headless gameplay test** — `godot --headless --path . --quit-after 300` must exit 0
+4. **Run smoke check** — `godot --headless --path . --script scripts/dev/smoke_check.gd --quit-after 10` must exit 0
 
 **Common GDScript warnings to watch for:**
 - `unused_parameter` — prefix unused signal callback params with `_`, and update body references too

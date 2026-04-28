@@ -41,6 +41,12 @@ All `dev/` and `scripts/dev/` scripts now parse and run cleanly:
 - `scripts/dev/verify_game_loads.gd` — scene load verification + 3s alive test (RID-clean)
 - `scripts/dev/detect_constructor_mismatches.py` — static call-site vs _init arity checker
 
+## Godot — Native Linux Install
+- Installed to: `~/.local/bin/godot` (Linux x86_64 native build 4.6.2.stable)
+- Reason: WSL2 9pdrvfs mounts can't execute Windows PE binaries
+- validate.sh now uses `${HOME}/.local/bin/godot` by default
+- Windows binary still at `G:\GodotEngine\Godot_v4.6.2-stable_win64_console.exe` (editor use)
+
 ## MCP Server Status
 - Server: `godot-mcp-codex` (wrapper script at `/home/samuli/.local/bin/godot-mcp-codex`)
 - Binary: `G:/AI_STUFF/FeralLoveProto/GodotEngine/Godot_v4.6.2-stable_win64_console.exe` (shared between projects)
@@ -73,10 +79,10 @@ All `dev/` and `scripts/dev/` scripts now parse and run cleanly:
 ```bash
 # Headless test (clean exit expected)
 cd /mnt/g/AI_STUFF/Games/ForgeSortProto
-GodotEngine/Godot_v4.6.2-stable_win64_console.exe --headless --path . --quit-after 300
+godot --headless --path . --quit-after 300
 
 # Debug mode (watch for warnings in output)
-GodotEngine/Godot_v4.6.2-stable_win64_console.exe -d --path .
+godot -d --path .
 
 # Validate all checks
 ./validate.sh
