@@ -12,7 +12,7 @@ func _ready():
 	hide()
 
 func _on_game_completed(results: Dictionary):
-	result_label.text = "Final Score: %d\nOrders Completed: %d" % [results.total_score, results.orders_completed]
+	result_label.text = "Final Score: %d\nOrders Completed: %d" % [results.get("total_score", 0), results.get("orders_completed", 0)]
 	show()
 
 func _on_restart_pressed():

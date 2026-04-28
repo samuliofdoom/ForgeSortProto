@@ -17,7 +17,7 @@ func _ready():
 	if flow_controller and flow_controller.has_method("register_gate"):
 		flow_controller.register_gate(gate_id, self)
 
-	gate_toggled.connect(_on_gate_toggled)
+	gate_toggled.connect(_on_gate_toggled, CONNECT_ONE_SHOT)
 
 func toggle():
 	is_open = not is_open

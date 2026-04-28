@@ -65,17 +65,9 @@ func get_mold_for_intake(intake_id: String) -> String:
 			if intake_id in gated_intakes:
 				return INTAKE_TO_MOLD.get(intake_id, "")
 
-	# No gate covers this intake — find the first open gate and use its intakes
-	var active_gates = []
-	for gate_id in GATE_ROUTING.keys():
-		if get_gate_state(gate_id):
-			for g_intake in GATE_ROUTING[gate_id]:
-				if not active_gates.has(g_intake):
-					active_gates.append(g_intake)
-
-	if active_gates.size() > 0:
-		return INTAKE_TO_MOLD.get(intake_id, "")
-	return INTAKE_TO_MOLD.get(intake_id, "")
+	# No gate covers this intake — metal cannot be routed; warn and return empty
+	push_warning("FlowController: intake '%s' has no open gate covering it; metal will not route" % intake_id)
+	return ""
 
 func route_metal_to_mold(intake_id: String, mold_id: String, metal_id: String, amount: float):
 	if molds.has(mold_id) and molds[mold_id]:
