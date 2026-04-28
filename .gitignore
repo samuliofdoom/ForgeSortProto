@@ -13,3 +13,4 @@ package-lock.json
 
 # Beads issue tracking (Linux filesystem symlink)
 .beads
+.exe
