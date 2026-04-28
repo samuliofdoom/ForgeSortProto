@@ -15,7 +15,9 @@ const BASE_POUR_AMOUNT_PER_SECOND: float = 50.0
 
 func _ready():
 	metal_source = get_node("/root/MetalSource")
-	metal_poured.connect(_noop)
+	# Note: metal_poured signal is emitted by _process for audio/particle/analytics
+	# listeners. Connect a real handler here when those systems are added.
+	pass
 	game_data = get_node("/root/GameData")
 	flow_controller = get_node("/root/FlowController")
 	score_manager = get_node("/root/ScoreManager")
@@ -40,8 +42,7 @@ func register_mold(mold_id: String, mold: Node):
 	if flow_controller:
 		flow_controller.register_mold(mold_id, mold)
 
-func _noop(_id: String = "", _pos: Vector2 = Vector2.ZERO, _amount: float = 0.0):
-	pass
+# No-op placeholder — remove when a real metal_poured handler is added.
 
 # Called by PourZone when a gate toggles mid-pour — flush any accumulated metal
 # via fallback routing before the pour is stopped, so no metal is silently lost.

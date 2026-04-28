@@ -9,6 +9,7 @@ func _ready():
 	score_manager = get_node("/root/ScoreManager")
 	score_manager.waste_updated.connect(_on_waste_updated)
 	score_manager.score_updated.connect(_on_score_updated)
+	score_manager.contamination_penalty.connect(_on_contamination_penalty)
 	_update_display()
 
 func _on_waste_updated(_waste_amount: float):
@@ -16,6 +17,15 @@ func _on_waste_updated(_waste_amount: float):
 
 func _on_score_updated(_total_score: int):
 	_update_display()
+
+func _on_contamination_penalty(_penalty: int):
+	# Flash red on contamination event so the player knows waste just increased.
+	_update_display()
+	if waste_bar:
+		var tween = create_tween()
+		waste_bar.modulate = Color.RED
+		tween.tween_interval(0.3)
+		_update_display()
 
 func _update_display(waste_amount: float = 0.0):
 	if score_manager:

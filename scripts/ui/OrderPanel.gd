@@ -14,6 +14,16 @@ func _ready():
 	order_manager.order_started.connect(_on_order_started)
 	order_manager.order_completed.connect(_on_order_completed)
 	order_manager.completed_parts_changed.connect(_on_completed_parts_changed)
+
+	# Listen for mold state changes to keep display fresh.
+	# Mold nodes register themselves via MetalFlow / direct reference.
+	var mold_area = get_node_or_null("/root/Main/MoldArea")
+	if mold_area:
+		for mold_name in ["BladeMold", "GuardMold", "GripMold"]:
+			var mold = mold_area.get_node_or_null(mold_name)
+			if mold and mold.has_signal("mold_contaminated"):
+				mold.mold_contaminated.connect(_on_mold_contaminated.bind(mold_name))
+
 	_update_display()
 
 func _on_order_started(order: OrderDefinition):
@@ -25,6 +35,13 @@ func _on_order_completed(_order: OrderDefinition, _score: int):
 
 func _on_completed_parts_changed(_parts: Array[String]):
 	_update_display()
+
+func _on_mold_contaminated(_mold_name: String, _mold_id: String):
+	# Flash the order panel red to warn the player a mold is contaminated.
+	modulate = Color.RED * 0.6
+	var tween = create_tween()
+	tween.tween_interval(0.3)
+	tween.tween_callback(func(): modulate = Color.WHITE)
 
 func _update_display():
 	if current_order == null:

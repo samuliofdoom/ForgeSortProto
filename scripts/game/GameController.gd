@@ -87,19 +87,10 @@ func _reset_mold(mold, _mold_id: String, required_metal: String):
 	if not mold:
 		return
 
+	# Use the public API so clear_mold() effects (signals, effects) always run,
+	# instead of duplicating the reset logic and bypassing those side-effects.
+	mold.clear_mold()
 	mold.required_metal = required_metal
-	mold.current_fill = 0.0
-	mold.is_contaminated = false
-	mold.is_complete = false
-	mold.current_metal = ""
-	mold.is_filling = false
-
-	var mold_sprite = mold.get_node_or_null("MoldSprite")
-	if mold_sprite:
-		mold_sprite.modulate = Color.WHITE
-
-	if mold._update_display:
-		mold._update_display()
 
 func _input(event):
 	if event is InputEventKey:

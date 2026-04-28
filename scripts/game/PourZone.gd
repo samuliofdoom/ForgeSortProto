@@ -136,14 +136,19 @@ func _spawn_drip_particle():
 
 func _input(event):
 	if event is InputEventMouseButton:
+		# Use get_global_mouse_position() — event.position is screen-space but
+		# MetalFlow routing (_get_intake_for_position, _route_fallback) expects
+		# world-space coordinates. get_global_mouse_position() handles the
+		# screen→world transform automatically.
+		var world_pos = get_global_mouse_position()
 		var is_in_zone = _is_position_in_zone(event.position)
 		if event.pressed and is_in_zone:
-			_start_pour(event.position)
+			_start_pour(world_pos)
 		elif not event.pressed and is_pouring:
 			_end_pour()
 	elif event is InputEventMouseMotion:
 		if is_pouring and _is_position_in_zone(event.position):
-			_update_pour_position(event.position)
+			_update_pour_position(get_global_mouse_position())
 
 func _is_position_in_zone(pos: Vector2) -> bool:
 	var zone_rect = Rect2(
