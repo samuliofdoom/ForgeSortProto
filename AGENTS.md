@@ -29,7 +29,7 @@ PourZone → MetalSource → MetalFlow → FlowController → Mold → OrderMana
 
 **Key methods**:
 - `MetalFlow._process()` — routes to intake by X position
-- `FlowController.get_mold_for_intake()` — respects gate states
+- `FlowController.get_mold_for_pour_position()` — runtime routing (NOTE: NOT `get_mold_for_intake()` which is older/deprecated API)
 - `Mold.receive_metal()` — fill/contamination/completion
 
 **Gate routing** (`FlowController.gd`):
@@ -54,25 +54,24 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 
 | File | Purpose |
 |------|---------|
-| `scenes/Main.tscn` | load_steps=15 (13 ext + 2 sub) |
+| `scenes/Main.tscn` | load_steps=19 (17 ext + 2 sub) |
 | `scripts/game/GameController.gd` | Start flow, order reset |
-| `scripts/game/MetalFlow.gd` | Pour routing |
-| `scripts/game/FlowController.gd` | Gate routing |
+| `scripts/game/MetalFlow.gd` | Pour routing (uses `get_mold_for_pour_position`) |
+| `scripts/game/FlowController.gd` | Gate routing (has BOTH `get_mold_for_intake` AND `get_mold_for_pour_position`) |
 | `scripts/game/Mold.gd` | Fill/contamination (tap to clear) |
 | `scripts/game/Gate.gd` | Toggle (input_pickable=true) |
 | `scripts/game/PourZone.gd` | Hold/sweep input |
 | `scripts/ui/GateToggleUI.gd` | G1-G4 buttons |
 | `scripts/dev/smoke_check.gd` | Full compilation check (`.new()` all game/UI scripts) |
-| `scripts/dev/detect_unused_params.py` | Static checker for unused function parameters |
 
 ---
 
 ## Orders
 | # | Name | Parts | Value |
 |---|------|-------|-------|
-| 1 | Iron Sword | iron_blade/guard/grip | 100 |
-| 2 | Steel Sword | steel_blade, iron guard/grip | 160 |
-| 3 | Noble Sword | steel_blade, gold_guard, iron_grip | 250 |
+| 1 | Iron Sword | iron blade/guard/grip | 100 |
+| 2 | Steel Sword | steel blade, iron guard/grip | 160 |
+| 3 | Noble Sword | steel blade, gold guard, iron grip | 250 |
 
 ---
 
@@ -83,28 +82,7 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 4. Signal `.connect(_on_foo)` → `func _on_foo()` must be in SAME file
 5. When prefixing a signal callback param with `_`, update the body too (e.g. `_score` not just `score` in signature — body must also use `_score`)
 6. `smoke_check.gd` skips data definitions (OrderDefinition, MoldDefinition, MetalDefinition, GameData) — they have required `_init()` args and can only be `load()`ed, not `.new()`ed
-
----
-
-## Quality Gates (MUST PASS BEFORE COMMIT)
-
-**Before marking any ticket done**, verify ALL of the following:
-
-1. **Run `./validate.sh`** — must pass all 9 checks
-2. **Open changed scripts in Godot editor** — Problems panel must show zero warnings or errors
-3. **Run headless gameplay test** — `godot --headless --path . --quit-after 300` must exit 0
-4. **Run smoke check** — `godot --headless --path . --script scripts/dev/smoke_check.gd --quit-after 10` must exit 0
-
-**Common GDScript warnings to watch for:**
-- `unused_parameter` — prefix unused signal callback params with `_`, and update body references too
-- `standalone_ternary` — ternary result must be assigned: `x = a if cond else b`
-- `unused_signal` — signals with no `connect()` call are intentional (e.g. `part_produced` in Mold.gd), but verify before ignoring
-- `invalid_constant` — Godot 4.6.2 Line2D uses `LINE_CAP_MODE_SQUARE` not `ROUND`, `LINE_JOINT_MODE_BEVEL` not `ROUND`
-- `unused_variable` / `unused_local_variable` — remove or prefix with `_`
-
-**The static unused-param checker (`scripts/dev/detect_unused_params.py`) catches these at validate.sh time — do NOT disable Check 8.**
-
----
+7. **Routing API mismatch**: `test_flow_controller_routing.gd` uses `get_mold_for_intake()` but the actual runtime uses `get_mold_for_pour_position()` — do NOT trust test_flow_controller_routing.gd for routing correctness, it tests the wrong API
 
 ## Known Gotchas
 - Gate uses `_input(event)` not `Area2D` for click detection
@@ -114,7 +92,7 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 
 ---
 
-## validate.sh — 8 Checks
+## validate.sh — 9 Checks
 
 | # | Check | Fail condition |
 |---|-------|----------------|
@@ -126,52 +104,31 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 | 6 | Parse errors | `--check-only` returns non-zero |
 | 7 | gdlint | SKIPPED (pip blocked on this system) |
 | 8 | **Static unused-param check** | `detect_unused_params.py` exits non-zero |
+| 9 | Constructor mismatches | `detect_constructor_mismatches.py` exits non-zero |
 
 ---
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
+## Critical Bugs (as of 2026-04-29)
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+### BUG-001: Speed bonus non-functional for Orders 2+3
+- `ScoreManager.gd:54` uses `start_time` (set once at game start) instead of per-order time
+- SPEED_THRESHOLD_SECONDS=30, elapsed for Order 3 = all time spent on Orders 1+2+3
+- Fix: add `order_start_time` to OrderManager, set in `start_next_order()`
 
-### Quick Reference
+### BUG-002: flush_accumulator double-penalizes
+- `MetalFlow.gd:50-54` calls `_route_fallback()` which delivers metal AND charges waste
+- Fix: route via `get_mold_for_pour_position()` without the waste charge
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
+### BUG-003: Mold contamination leaks across orders
+- `Mold.gd:150-158` only clears if `part_requests.has(part_type)` for the new order
+- Fix: always call `clear_mold()` at order start
 
-### Rules
+### BUG-004: game_over signal has no UI handler
+- `ScoreManager.gd:46` emits `game_over` but `ResultPanel.gd` only handles `game_completed`
+- Fix: connect `game_over` in ResultPanel with "GAME OVER" overlay + screen shake
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+---
 
-## Session Completion
+## Dev Diary
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
+Full analysis, bug register, production phases, and open questions in `Docs/dev_diary.md`.
