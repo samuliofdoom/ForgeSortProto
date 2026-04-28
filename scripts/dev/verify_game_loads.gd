@@ -46,4 +46,8 @@ func _process(_delta):
 	_ticks += 1
 	if _ticks >= 180:  # 3 seconds at 60fps
 		print("PASS: Game stayed alive for 3 seconds without crash")
+		# Clean up before quit to avoid RID leaks
+		var inst = root.get_node_or_null("/root/Main")
+		if inst:
+			inst.queue_free()
 		quit(0)

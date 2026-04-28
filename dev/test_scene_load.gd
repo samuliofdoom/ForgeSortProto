@@ -8,6 +8,7 @@ func _init():
         var inst = main_scene.instantiate()
         if inst:
             print("Main.tscn instantiate OK")
+            inst.queue_free()  # Clean up before quit to avoid RID leaks
             quit(0)
         else:
             print("FAIL: could not instantiate Main.tscn")
