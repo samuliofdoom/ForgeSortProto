@@ -155,6 +155,21 @@ else
     echo "  OK: no unused parameters"
 fi
 
+# Check 9: Constructor call-site vs _init signature mismatch
+#  smoke_check.gd only load()-s data definitions (OrderDefinition, etc.)
+#   so .new() call-site mismatches would only surface at runtime.
+#   This static check finds them before runtime.
+echo "Checking constructor call-site vs _init signature..."
+PY_OUTPUT=$(python3 scripts/dev/detect_constructor_mismatches.py 2>&1)
+PY_EXIT=$?
+if [[ $PY_EXIT -ne 0 ]]; then
+    echo "  ERROR: Constructor mismatch(s) detected:"
+    echo "$PY_OUTPUT" | grep -E "FAILED|too many|too few" | head -20
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  OK: no constructor mismatches"
+fi
+
 # Summary
 echo ""
 if [[ $ERRORS -eq 0 ]]; then

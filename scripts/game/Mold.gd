@@ -148,7 +148,7 @@ func _on_order_started(new_order: OrderDefinition):
 	if is_complete or is_contaminated:
 		clear_mold()
 	if new_order.part_requests.has(part_type):
-		required_metal = new_order.part_requests[part_type].required_metal
+		required_metal = new_order.part_requests[part_type]
 	_update_display()
 
 func _update_display():

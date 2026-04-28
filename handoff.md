@@ -3,23 +3,27 @@
 All tasks finished. No pending work.
 
 ## Current State
-- Commit: `a4e92c8` (local only, no remote)
+- Commit: `b5f2d881` (local only, no remote)
 - Branch: `master`
-- All 8 `validate.sh` checks pass
+- All 9 `validate.sh` checks pass
 - All GDScript warnings resolved — zero Problems panel warnings
 - Game exits cleanly: headless (`--quit-after 300`) EXIT 0 with zero errors
 - Debug mode (`-d`): zero warnings, zero errors
 - RID leak fixes applied to test infrastructure (`test_scene_load.gd`, `verify_game_loads.gd`)
 
 ## Today's Fixes (2026-04-28)
-- `dev/ProblemReader.gd:24` — missing closing `"` on `print("=== DONE ===)"` [3f74e87]
-- `dev/semantic_check.gd:34` — same missing closing `"` issue [3f74e87]
-- `dev/semantic_check.gd:30` — removed `GDScriptParser.new()` (Godot 3.x only) [3f74e87]
-- `Gate.gd:29` — renamed param `gate_id` → `p_gate_id` to avoid shadowing `@export var gate_id` [3f74e87]
-- `GateToggleUI.gd` — removed unused `signal gate_toggled` [3f74e87]
-- `MetalSelector.gd` — removed unused `signal metal_selected` [3f74e87]
-- `dev/test_scene_load.gd` — added `inst.queue_free()` before `quit()` to fix RID leaks [a4e92c8]
-- `scripts/dev/verify_game_loads.gd` — added cleanup before `quit()` to fix RID leaks [a4e92c8]
+### Morning session (committed earlier as fc9d977)
+- `OrderDefinition.gd` — added `part_requests: Dictionary` property (was missing entirely)
+- `GameData.gd` — updated all 3 order constructors to build and pass `part_requests` dict
+- `Mold.gd` — `receive_metal()` now uses `new_order.part_requests` to validate metal type
+
+### This session
+- `scripts/game/Mold.gd:151` — **BUG FIX**: `new_order.part_requests[part_type].required_metal` was erroneous.
+  - `part_requests` is `Dictionary` mapping `part_type -> metal_string` (e.g. `{"blade": "iron", ...}`)
+  - `part_requests[part_type]` returns a `String` like `"iron"`, NOT an object with a `.required_metal` property
+  - Calling `.required_metal` on a String is a runtime crash. Fixed: removed `.required_metal`
+- `scripts/dev/detect_constructor_mismatches.py` — **NEW**: static checker for `.new()` call-site args vs `._init()` signature mismatches
+- `validate.sh` — added **Check 9**: constructor call-site validation (calls the new script above)
 
 ## Known Limitations
 - `dev/ProblemReader.gd` is `@tool extends EditorPlugin` — can ONLY run inside Godot editor, not headless.
@@ -32,8 +36,10 @@ All `dev/` and `scripts/dev/` scripts now parse and run cleanly:
 - `dev/semantic_check.gd` — loads all game scripts, verifies they load without error
 - `dev/problems_fetch.gd` — loads all game scripts, reports load errors
 - `dev/test_scene_load.gd` — instantiates Main.tscn, verifies it builds cleanly (RID-clean)
+- `dev/test_order_start.gd` — SceneTree-based order start test (uses await, not yield)
 - `scripts/dev/smoke_check.gd` — 23/23 game/UI scripts compile via `.new()`
 - `scripts/dev/verify_game_loads.gd` — scene load verification + 3s alive test (RID-clean)
+- `scripts/dev/detect_constructor_mismatches.py` — static call-site vs _init arity checker
 
 ## MCP Server Status
 - Server: `godot-mcp-codex` (wrapper script at `/home/samuli/.local/bin/godot-mcp-codex`)
@@ -45,9 +51,23 @@ All `dev/` and `scripts/dev/` scripts now parse and run cleanly:
 
 ## What's Built
 - `scripts/dev/detect_unused_params.py` — static Python checker for unused function parameters
+- `scripts/dev/detect_constructor_mismatches.py` — static Python checker for `.new()` call-site vs `._init()` signature mismatches (NEW this session)
 - `scripts/dev/smoke_check.gd` — full compilation check via `.new()` on all game/UI scripts (23/23 pass)
 - `scripts/dev/verify_game_loads.gd` — scene load verification
-- `validate.sh` — 8-check pipeline (Checks 5 and 8 are the new proactive guards)
+- `validate.sh` — **9-check pipeline** (Check 9 = constructor mismatch detection is new this session)
+
+## Jcodemunch Index
+- Repo: `local/ForgeSortProto-0f1b469d`
+- 39 files indexed, 250 symbols
+- **gdscript extractor flagged as missing** — `get_symbol_source`, `get_file_outline`, `search_symbols` all fail for GDScript files
+- **Use `search_text` + `read_file`** for all GDScript reads
+- Index command: `mcp_jcodemunch_index_folder` with `incremental=false` (full reindex)
+
+## Patterns That Cause Bugs (Safeguards)
+1. **Missing Resource properties**: `OrderDefinition`, `MoldDefinition`, `MetalDefinition` are `Resource` classes. If a caller accesses a property that doesn't exist on the Resource, runtime crash. `smoke_check.gd` does NOT catch this (only `load()`s them, doesn't `.new()`). `detect_constructor_mismatches.py` catches arity mismatches but not missing properties. **Safeguard**: always cross-check accessed properties against the class definition.
+2. **Chain property access on primitives**: `dict[key].property` where `dict[key]` returns a String/int/Color — compiles fine, crashes at runtime. No static check catches this yet. **Safeguard**: headless gameplay test.
+3. **Unused params**: `detect_unused_params.py` catches these (Check 8). Prefix intentionally unused params with `_`.
+4. **Constructor arity mismatches**: `detect_constructor_mismatches.py` catches these (Check 9).
 
 ## Running the Game
 ```bash
@@ -63,4 +83,4 @@ GodotEngine/Godot_v4.6.2-stable_win64_console.exe -d --path .
 ```
 
 ## Next Session
-Run `./validate.sh` first. If all pass, game is clean.
+Run `./validate.sh` first. If all 9 pass, game is clean.

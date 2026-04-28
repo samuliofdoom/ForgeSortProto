@@ -12,4 +12,4 @@ package-lock.json
 .beads-credential-key
 
 # Beads issue tracking (Linux filesystem symlink)
-.beads/
+.beads
