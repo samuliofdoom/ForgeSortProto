@@ -10,6 +10,7 @@ var score_manager: Node
 var molds: Dictionary = {}
 
 var pour_accumulator: float = 0.0
+var _last_pour_metal: String = ""
 const BASE_POUR_AMOUNT_PER_SECOND: float = 50.0
 
 func _ready():
@@ -41,6 +42,15 @@ func register_mold(mold_id: String, mold: Node):
 
 func _noop(_id: String = "", _pos: Vector2 = Vector2.ZERO, _amount: float = 0.0):
 	pass
+
+# Called by PourZone when a gate toggles mid-pour — flush any accumulated metal
+# via fallback routing before the pour is stopped, so no metal is silently lost.
+func flush_accumulator(pour_origin: Vector2):
+	if pour_accumulator >= 1.0:
+		var metal_id = _last_pour_metal
+		var amount = floor(pour_accumulator)
+		pour_accumulator = 0.0
+		_route_fallback(metal_id, pour_origin, amount)
 
 func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 	# Ask FlowController which mold to route to, given pour position and gate state
@@ -94,4 +104,8 @@ func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float):
 				nearest_mold_id = mold_id
 
 	if nearest_mold_id and molds[nearest_mold_id]:
+		# Fallback routing means the pour bypassed the gate/intake system —
+		# count it as waste since it didn't go through proper routing.
+		if score_manager:
+			score_manager.add_waste(amount)
 		molds[nearest_mold_id].receive_metal(metal_id, amount)

@@ -20,6 +20,7 @@ var _glow_rect: ColorRect
 var _particle_container: Node2D
 var _last_particle_time: float = 0.0
 var _active_metal: String = "iron"
+var _last_pour_metal: String = "iron"  # tracks metal type at pour start for accumulator flush on gate toggle
 var _screen_height: float = 720.0
 
 # Dynamic pour params driven by metal definition
@@ -160,11 +161,12 @@ func _start_pour(pos: Vector2):
 
 	if metal_source:
 		metal_source.start_pour()
-		_active_metal = metal_source.get_selected_metal()
-
+		_active_metal = metal_source.get_selected_metal() if metal_source else "iron"
 	# Apply metal-specific pour properties (speed, spread)
 	_apply_metal_properties()
 
+	# Track metal type so MetalFlow can flush accumulator on gate toggle
+	_last_pour_metal = _active_metal
 	if metal_flow:
 		metal_flow.set_active_stream(self)
 
@@ -183,8 +185,11 @@ func _end_pour():
 	pour_ended.emit()
 
 func _on_gate_toggled(_gate_id: String, _state: bool):
-	# Gate changed mid-pour — stop the current pour
+	# Gate changed mid-pour — flush any accumulated metal via fallback routing
+	# so no pour is silently discarded, then stop the pour stream.
 	if is_pouring:
+		if metal_flow and metal_flow.has_method("flush_accumulator"):
+			metal_flow.flush_accumulator(pour_origin)
 		is_pouring = false
 		_hide_stream_visuals()
 		if metal_source:
@@ -212,3 +217,6 @@ func _hide_stream_visuals():
 
 func _get_metal_color(metal_id: String) -> Color:
 	return MetalDefinition.get_color(metal_id).linear_to_srgb()
+
+func get_last_pour_metal() -> String:
+	return _last_pour_metal

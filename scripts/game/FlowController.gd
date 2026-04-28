@@ -17,7 +17,9 @@ const INTAKE_TO_MOLD: Dictionary = {
 const GATE_ROUTING: Dictionary = {
 	"gate_01": ["intake_a", "intake_b"],
 	"gate_02": ["intake_b", "intake_c"],
-	"gate_03": ["intake_a", "intake_b", "intake_c"],
+	# G3 no longer covers all 3 — that trivially bypassed Order 1 routing challenge.
+	# Now G3 covers A+C, requiring G1/G2/G4 combos for full coverage.
+	"gate_03": ["intake_a", "intake_c"],
 	"gate_04": ["intake_c"]
 }
 
