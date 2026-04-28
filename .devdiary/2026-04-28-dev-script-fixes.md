@@ -44,7 +44,6 @@ print("=== DONE ===")
 ```gdscript
 # Before
 var parser = GDScriptParser.new()
-# Try to get semantic warnings
 print("CHECKED: " + path)
 # After
 print("CHECKED: " + path)
@@ -148,7 +147,7 @@ MCP polling (`run_project` → `get_debug_output`) does NOT work — Godot proce
 | `scripts/dev/verify_game_loads.gd` | Added cleanup block before `quit()` |
 | `handoff.md` | Updated with MCP status, RID leak note, debug mode info |
 
-### Final State
+### Final State (Evening)
 
 - `validate.sh`: 8/8 pass
 - `smoke_check.gd`: 23/23 scripts pass
@@ -156,3 +155,71 @@ MCP polling (`run_project` → `get_debug_output`) does NOT work — Godot proce
 - `scripts/dev/verify_game_loads.gd`: EXIT 0, no RID leaks
 - Game (no --script): clean EXIT 0
 - Debug mode: zero warnings, zero errors
+
+---
+
+## Session: 2026-04-28 (Late Night) — part_requests Chain-Access Bug + validate.sh Check 9
+
+### What We Did
+
+**Bug found via jcodemunch audit**: `Mold.gd:151` had:
+```gdscript
+required_metal = new_order.part_requests[part_type].required_metal
+```
+`part_requests` is `{"blade": "iron", "guard": "iron", "grip": "iron"}` — a Dictionary mapping `part_type -> metal_string`. So `part_requests[part_type]` returns a `String` like `"iron"`, NOT an object. Calling `.required_metal` on a String is a runtime crash that only fires when an order starts.
+
+**Fix**: Remove `.required_metal`:
+```gdscript
+required_metal = new_order.part_requests[part_type]
+```
+
+### Systemic Gap Found
+
+`smoke_check.gd` only `load()`s data definitions (`OrderDefinition`, `MoldDefinition`, `MetalDefinition`) — never `.new()`s them. So constructor call-site mismatches (wrong arg count) and missing property accesses surface only at runtime.
+
+### New Safeguard: Check 9
+
+Created `scripts/dev/detect_constructor_mismatches.py` — a static Python checker that:
+1. Finds all `.new()` call sites in `scripts/`
+2. Resolves the class name to its source file
+3. Extracts the `._init()` parameter count and required (no-default) count
+4. Compares call-site arg count vs signature
+
+Added as **Check 9** in `validate.sh`.
+
+### Jcodemunch Index
+
+Re-indexed with `mcp_jcodemunch_index_folder(incremental=false)`:
+- Repo: `local/ForgeSortProto-0f1b469d` — 39 files, 250 symbols
+- **gdscript extractor is missing** — use `search_text` + `read_file` for GDScript reads
+
+### Patterns That Cause Bugs (Safeguards)
+
+1. **Missing Resource properties**: `smoke_check.gd` only `load()`s data defs, doesn't `.new()` — property gaps only caught at runtime. Safeguard: always cross-check accessed properties against the class definition.
+2. **Chain property access on primitives**: `dict[key].property` where `dict[key]` returns a String/int/Color — compiles fine, crashes at runtime. No static check catches this. Safeguard: headless gameplay test (`--quit-after 300`).
+3. **Unused params**: `detect_unused_params.py` (Check 8).
+4. **Constructor arity mismatches**: `detect_constructor_mismatches.py` (Check 9).
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `scripts/game/Mold.gd` | Line 151: removed erroneous `.required_metal` |
+| `scripts/dev/detect_constructor_mismatches.py` | NEW: static constructor arity checker |
+| `validate.sh` | Added Check 9: constructor call-site validation |
+| `handoff.md` | Updated with new patterns, check_9, jcodemunch status |
+
+### Final State (Late Night)
+
+- `validate.sh`: **9/9 pass** (was 8, added Check 9)
+- `smoke_check.gd`: 23/23 scripts pass
+- Game (headless): clean EXIT 0
+- Debug mode: zero warnings, zero errors
+- Constructor mismatch check: PASS
+- No remote (local-only repo)
+
+---
+
+## Next Session
+
+Run `./validate.sh` first. If all 9 pass, game is clean.
