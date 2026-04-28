@@ -1,7 +1,5 @@
 extends Control
 
-signal gate_toggled(gate_id: String)
-
 @onready var gate_01_btn: Button = $Gate01Button
 @onready var gate_02_btn: Button = $Gate02Button
 @onready var gate_03_btn: Button = $Gate03Button

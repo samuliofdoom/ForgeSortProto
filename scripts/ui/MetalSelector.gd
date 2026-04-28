@@ -1,7 +1,5 @@
 extends Control
 
-signal metal_selected(metal_id: String)
-
 @onready var iron_button: Button = $IronButton
 @onready var steel_button: Button = $SteelButton
 @onready var gold_button: Button = $GoldButton

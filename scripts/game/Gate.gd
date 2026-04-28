@@ -26,8 +26,8 @@ func toggle():
 	if flow_controller:
 		flow_controller.set_gate_state(gate_id, is_open)
 
-func _on_gate_toggled(gate_id: String, open: bool):
-	if gate_id == self.gate_id:
+func _on_gate_toggled(p_gate_id: String, open: bool):
+	if p_gate_id == self.gate_id:
 		is_open = open
 		_update_visual()
 
