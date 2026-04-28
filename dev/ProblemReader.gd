@@ -21,7 +21,7 @@ func _enter_tree():
         # Check if we can access error list
         print("Editor interface available")
 
-    print("=== DONE ===)
+    print("=== DONE ===")
 
 func _exit_tree():
     pass

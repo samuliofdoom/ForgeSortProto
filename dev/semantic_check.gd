@@ -27,8 +27,6 @@ func _init():
     for path in scripts:
         var res = load(path)
         if res:
-            var parser = GDScriptParser.new()
-            # Try to get semantic warnings
             print("CHECKED: " + path)
     
     print("=== DONE ===")
