@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/GameController.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/game/PourZone.gd" id="2_pourzone"]
@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scripts/game/Intake.gd" id="12_intake"]
 [ext_resource type="Script" path="res://scripts/ui/GateToggleUI.gd" id="13_gatetoggleui"]
 [ext_resource type="Script" path="res://scripts/ui/SpeedTimer.gd" id="14_speedtimer"]
+[ext_resource type="Script" path="res://scripts/ui/GateDebugHUD.gd" id="15_gatedebughud"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_intake"]
 size = Vector2(40, 30)
@@ -559,3 +560,6 @@ offset_right = 250.0
 offset_bottom = 400.0
 button_mask = 1
 text = "Start Game"
+
+[node name="GateDebugHUD" type="CanvasLayer" parent="."]
+script = ExtResource("15_gatedebughud")
