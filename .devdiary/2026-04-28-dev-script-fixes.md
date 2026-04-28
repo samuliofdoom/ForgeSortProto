@@ -68,6 +68,15 @@ dev/problems_fetch.gd  → PASS (all scripts load OK, exit 0)
 
 All 8 validate.sh checks pass.
 
+### 5. Fixed 3 GDScript Warnings Found Via Debug Mode
+
+When running Godot in debug mode (`-d`), it surfaces warnings that `--headless` suppresses:
+- `Gate.gd:29` — param `gate_id` shadowed the `@export var gate_id` class member
+- `GateToggleUI.gd` — `signal gate_toggled(gate_id: String)` declared but never emitted
+- `MetalSelector.gd` — `signal metal_selected(metal_id: String)` declared but never emitted
+
+Fixed all three. After fixes, running with `-d` produces zero warnings.
+
 ---
 
 ## Files Changed

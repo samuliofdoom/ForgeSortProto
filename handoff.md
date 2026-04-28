@@ -3,7 +3,7 @@
 All tasks finished. No pending work.
 
 ## Current State
-- Commit: `ed7bb39` (local only, no remote)
+- Commit: `3f74e87` (local only, no remote)
 - Branch: `master`
 - All 8 `validate.sh` checks pass
 - All GDScript warnings resolved — game runs clean with zero Problems panel warnings
@@ -13,6 +13,9 @@ All tasks finished. No pending work.
 - `dev/ProblemReader.gd:24` — missing closing `"` on `print("=== DONE ===)"`
 - `dev/semantic_check.gd:34` — same missing closing `"` issue
 - `dev/semantic_check.gd:30` — removed `GDScriptParser.new()` which doesn't exist in Godot 4.x
+- `Gate.gd:29` — renamed param `gate_id` → `p_gate_id` to avoid shadowing `@export var gate_id`
+- `GateToggleUI.gd` — removed unused `signal gate_toggled`
+- `MetalSelector.gd` — removed unused `signal metal_selected`
 
 ## What's Built
 - `scripts/dev/detect_unused_params.py` — static Python checker for unused function parameters
