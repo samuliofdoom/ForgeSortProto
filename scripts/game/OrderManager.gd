@@ -51,10 +51,10 @@ func complete_part(part_id: String):
 
 	if all_complete:
 		var order_score = score_manager.calculate_order_score(current_order) if score_manager else current_order.base_value
+		var completed_order = current_order
 		current_order_index += 1
-		order_completed.emit(current_order, order_score)
-		if current_order_index < game_data.orders.size():
-			start_next_order()
+		order_completed.emit(completed_order, order_score)
+		start_next_order()
 
 func get_current_order() -> OrderDefinition:
 	return current_order

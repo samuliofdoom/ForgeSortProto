@@ -74,7 +74,7 @@ func get_mold_for_intake(intake_id: String) -> String:
 					active_gates.append(g_intake)
 
 	if active_gates.size() > 0:
-		return INTAKE_TO_MOLD.get(active_gates[0], "")
+		return INTAKE_TO_MOLD.get(intake_id, "")
 	return INTAKE_TO_MOLD.get(intake_id, "")
 
 func route_metal_to_mold(intake_id: String, mold_id: String, metal_id: String, amount: float):

@@ -1,6 +1,7 @@
 extends Node
 
 signal metal_poured(metal_id: String, world_position: Vector2, amount: float)
+signal waste_routed(metal_id: String, world_position: Vector2, amount: float)
 
 var active_pour_zone: Node = null
 var metal_source: Node
@@ -46,14 +47,14 @@ func register_mold(mold_id: String, mold: Node):
 
 # Called by PourZone when a gate toggles mid-pour — flush any accumulated metal
 # via fallback routing before the pour is stopped, so no metal is silently lost.
-func flush_accumulator(pour_origin: Vector2):
+func flush_accumulator(metal_id: String, pour_origin: Vector2):
 	if pour_accumulator >= 1.0:
-		var metal_id = _last_pour_metal
 		var amount = floor(pour_accumulator)
 		pour_accumulator = 0.0
 		_route_fallback(metal_id, pour_origin, amount)
 
 func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
+	_last_pour_metal = metal_id
 	# Ask FlowController which mold to route to, given pour position and gate state
 	if flow_controller and flow_controller.has_method("get_mold_for_pour_position"):
 		var result = flow_controller.get_mold_for_pour_position(pour_pos)
@@ -66,6 +67,7 @@ func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 			# No intake reachable — full waste
 			if score_manager:
 				score_manager.add_waste(amount)
+			waste_routed.emit(metal_id, pour_pos, amount)
 	else:
 		# Fallback: use position-based routing (original behavior when FlowController lacks new API)
 		var intake_id = _get_intake_for_position(pour_pos)
@@ -109,4 +111,5 @@ func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float):
 		# count it as waste since it didn't go through proper routing.
 		if score_manager:
 			score_manager.add_waste(amount)
+		waste_routed.emit(metal_id, pour_pos, amount)
 		molds[nearest_mold_id].receive_metal(metal_id, amount)

@@ -46,7 +46,11 @@ func _ready():
 
 func _input(event):
 	if event is InputEventMouseButton:
-		if event.pressed and _is_click_on_mold(event.position):
+		# Use get_global_mouse_position() — event.position is screen-space but
+		# _is_click_on_mold() uses world-space (global_position). Using screen-space
+		# coords would give wrong results when the viewport is scrolled or the
+		# MoldArea is not at origin.
+		if event.pressed and _is_click_on_mold(get_global_mouse_position()):
 			_on_mold_tapped()
 
 func _is_click_on_mold(click_pos: Vector2) -> bool:
@@ -144,6 +148,8 @@ func _on_order_completed(_completed_order: OrderDefinition, _score: int):
 	is_locked = true
 
 func _on_order_started(new_order: OrderDefinition):
+	if score_manager and score_manager.has_method("reset_order"):
+		score_manager.reset_order()
 	is_locked = false
 	if is_complete or is_contaminated:
 		clear_mold()
@@ -163,20 +169,6 @@ func _update_display():
 		else:
 			fill_bar.modulate = Color.WHITE
 
-	if state_label:
-		if is_complete:
-			state_label.text = "Done!"
-			state_label.modulate = Color.GREEN
-		elif is_contaminated:
-			state_label.text = "Tap to Clear"
-			state_label.modulate = Color.RED
-		elif current_fill > 0:
-			state_label.text = "%.0f%%" % (get_fill_percent() * 100)
-			state_label.modulate = Color.YELLOW
-		else:
-			state_label.text = required_metal.capitalize()
-			state_label.modulate = Color.WHITE
-
 	if mold_sprite:
 		if is_contaminated:
 			mold_sprite.modulate = Color.RED * 0.5
@@ -184,8 +176,27 @@ func _update_display():
 			mold_sprite.modulate = Color.GREEN * 0.5
 		elif current_fill > 0:
 			mold_sprite.modulate = MetalDefinition.get_color(current_metal) * 0.7
+		elif is_locked:
+			mold_sprite.modulate = Color.DIM_GRAY * 0.5
 		else:
 			mold_sprite.modulate = Color.WHITE
+
+	if state_label:
+		if is_complete:
+			state_label.text = "Done!"
+			state_label.modulate = Color.GREEN
+		elif is_contaminated:
+			state_label.text = "Tap to Clear"
+			state_label.modulate = Color.RED
+		elif is_locked:
+			state_label.text = "Locked"
+			state_label.modulate = Color.DIM_GRAY
+		elif current_fill > 0:
+			state_label.text = "%.0f%%" % (get_fill_percent() * 100)
+			state_label.modulate = Color.YELLOW
+		else:
+			state_label.text = required_metal.capitalize()
+			state_label.modulate = Color.WHITE
 
 func _get_metal_color(metal_id: String) -> Color:
 	return MetalDefinition.get_color(metal_id)

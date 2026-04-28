@@ -1,6 +1,7 @@
 extends Node
 
 @onready var start_button: Button = $UI/StartButton
+@onready var result_panel: Control = $UI/ResultPanel
 
 var order_manager: Node
 var metal_flow: Node
@@ -29,7 +30,11 @@ func _on_start_pressed():
 	order_manager.start_game()
 
 func _on_game_completed(_results: Dictionary):
-	start_button.show()
+	if result_panel:
+		result_panel.show()
+		start_button.hide()
+	else:
+		start_button.show()
 
 func _on_game_over(_final_score: int, _waste_percent: float):
 	start_button.show()

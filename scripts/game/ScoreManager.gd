@@ -9,6 +9,7 @@ var total_score: int = 0
 var waste_units: float = 0.0
 var contamination_count: int = 0
 var start_time: int = 0
+var game_started: bool = false
 
 const WASTE_PENALTY_PER_UNIT: float = 1.0
 const CONTAMINATION_PENALTY: int = 25
@@ -17,7 +18,9 @@ const SPEED_THRESHOLD_SECONDS: float = 30.0
 const WASTE_METER_MAX: float = 100.0
 
 func _ready():
-	start_time = Time.get_ticks_msec()
+	# start_time is set in reset() which is called by start_game(), not here.
+	# This avoids counting the time between _ready() and actual game start.
+	pass
 
 func reset():
 	total_score = 0
@@ -26,6 +29,9 @@ func reset():
 	start_time = Time.get_ticks_msec()
 	score_updated.emit(total_score)
 	waste_updated.emit(0.0)
+
+func reset_order():
+	contamination_count = 0
 
 func add_waste(amount: float):
 	waste_units += amount

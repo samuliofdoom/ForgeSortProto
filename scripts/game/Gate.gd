@@ -22,9 +22,11 @@ func _ready():
 func toggle():
 	is_open = not is_open
 	_update_visual()
-	gate_toggled.emit(gate_id, is_open)
+	# Use toggle_gate to centralize state + signal in FlowController
+	# FlowController.toggle_gate() emits gate_toggled on FlowController
+	# (Gate's own gate_toggled signal is for internal use only, e.g. self-updates)
 	if flow_controller:
-		flow_controller.set_gate_state(gate_id, is_open)
+		flow_controller.toggle_gate(gate_id)
 
 func _on_gate_toggled(p_gate_id: String, open: bool):
 	if p_gate_id == self.gate_id:

@@ -40,3 +40,13 @@ func select_next_metal():
 func select_metal_by_id(metal_id: String):
 	if game_data.metals.has(metal_id):
 		_select_metal(metal_id)
+
+func _input(event):
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_1:
+				select_metal_by_id("iron")
+			KEY_2:
+				select_metal_by_id("steel")
+			KEY_3:
+				select_metal_by_id("gold")

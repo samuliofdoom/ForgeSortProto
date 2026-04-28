@@ -33,6 +33,8 @@ func _ready():
 	var flow_controller = get_node_or_null("/root/FlowController")
 	if flow_controller:
 		flow_controller.gate_toggled.connect(_on_gate_toggled)
+	if metal_flow:
+		metal_flow.waste_routed.connect(_on_waste_routed)
 	_setup_visuals()
 
 func _setup_visuals():
@@ -104,9 +106,9 @@ func _update_stream_visuals():
 	_stream_line.default_color = _get_metal_color(_active_metal)
 	_stream_line.width = _current_stream_width
 
-	# Glow follows pour point
+	# Glow follows pour point - use separate glow color for bloom effect
 	_glow_rect.global_position = pour_origin + Vector2(-_current_stream_width * 1.5, -_current_stream_width * 1.5)
-	_glow_rect.color = _get_metal_color(_active_metal)
+	_glow_rect.color = _get_metal_glow_color(_active_metal)
 	_glow_rect.size = Vector2(_current_stream_width * 3, _current_stream_width * 3)
 
 	# Pulse glow alpha
@@ -118,8 +120,24 @@ func _spawn_drip_particle():
 		return
 
 	var drip = ColorRect.new()
-	drip.color = _get_metal_color(_active_metal)
-	drip.size = Vector2(3, 3)
+	# Add size and color variation based on metal type for liquid feel
+	var metal_id = _active_metal if _active_metal else "iron"
+	match metal_id:
+		"iron":
+			# Dull orange, smaller drips
+			drip.color = Color(0.85, 0.3, 0.05)
+			drip.size = Vector2(randf_range(2, 4), randf_range(2, 4))
+		"steel":
+			# Bright silver-white, medium drips
+			drip.color = Color(0.8, 0.85, 0.95)
+			drip.size = Vector2(randf_range(3, 5), randf_range(3, 5))
+		"gold":
+			# Shimmering yellow, larger dripping beads
+			drip.color = Color(1.0, 0.9, 0.3)
+			drip.size = Vector2(randf_range(4, 7), randf_range(4, 7))
+		_:
+			drip.color = _get_metal_color(metal_id)
+			drip.size = Vector2(3, 3)
 
 	# Start near pour point with slight horizontal scatter
 	var scatter = _current_stream_width * 0.5
@@ -194,7 +212,7 @@ func _on_gate_toggled(_gate_id: String, _state: bool):
 	# so no pour is silently discarded, then stop the pour stream.
 	if is_pouring:
 		if metal_flow and metal_flow.has_method("flush_accumulator"):
-			metal_flow.flush_accumulator(pour_origin)
+			metal_flow.flush_accumulator(_last_pour_metal, pour_origin)
 		is_pouring = false
 		_hide_stream_visuals()
 		if metal_source:
@@ -206,7 +224,28 @@ func _on_metal_selected(metal_id: String):
 	_apply_metal_properties()
 	if is_pouring:
 		_stream_line.default_color = _get_metal_color(metal_id)
-		_glow_rect.color = _get_metal_color(metal_id)
+		_glow_rect.color = _get_metal_glow_color(metal_id)
+
+func _on_waste_routed(_metal_id: String, world_pos: Vector2, _amount: float):
+	# Brief orange flash/shake at the pour origin to indicate rejection
+	_trigger_rejection_effect(world_pos)
+
+func _trigger_rejection_effect(world_pos: Vector2):
+	# Create a brief orange flash indicator at the rejection point
+	var flash = ColorRect.new()
+	flash.name = "RejectionFlash"
+	flash.color = Color.ORANGE * 0.7
+	flash.size = Vector2(20, 20)
+	flash.position = world_pos - Vector2(10, 10)
+	flash.z_index = 100
+	add_child(flash)
+
+	# Shake effect
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(flash, "modulate:a", 0.0, 0.5)
+	tween.tween_property(flash, "scale", Vector2(2.0, 2.0), 0.5)
+	tween.tween_callback(flash.queue_free)
 
 func _show_stream_visuals():
 	if _stream_line:
@@ -221,7 +260,33 @@ func _hide_stream_visuals():
 		_glow_rect.visible = false
 
 func _get_metal_color(metal_id: String) -> Color:
-	return MetalDefinition.get_color(metal_id).linear_to_srgb()
+	# Return molten hot color for the stream: brighter than base metal color.
+	# Color() in Godot 4 is sRGB — do NOT call linear_to_srgb() on literals.
+	match metal_id:
+		"iron":
+			# Molten iron: bright dull-orange
+			return Color(0.9, 0.35, 0.05)
+		"steel":
+			# Molten steel: bright silver-white
+			return Color(0.85, 0.9, 1.0)
+		"gold":
+			# Molten gold: bright shimmering yellow
+			return Color(1.0, 0.95, 0.3)
+		_:
+			return MetalDefinition.get_color(metal_id)
+
+func _get_metal_glow_color(metal_id: String) -> Color:
+	# Glow color is brighter, more saturated version for the radial glow.
+	# Color() literals are already sRGB — no conversion needed.
+	match metal_id:
+		"iron":
+			return Color(1.0, 0.5, 0.1)
+		"steel":
+			return Color(0.9, 0.95, 1.0)
+		"gold":
+			return Color(1.0, 0.9, 0.4)
+		_:
+			return Color(1.0, 0.7, 0.2)
 
 func get_last_pour_metal() -> String:
 	return _last_pour_metal

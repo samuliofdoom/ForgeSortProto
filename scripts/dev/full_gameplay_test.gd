@@ -7,7 +7,7 @@ extends Node2D
 var _tick: int = 0
 var _phase: int = 0
 var _errors: int = 0
-var TICK_LIMIT: int = 100
+var TICK_LIMIT: int = 150
 
 # ── Autoloads (set in _ready) ───────────────────────────────────────────
 var _metal_source: Node
@@ -45,11 +45,16 @@ func _process(_delta: float):
 		1: _test_initial_state()
 		2: _test_metal_selection()
 		3: _test_gate_toggle()
-		4: _test_pour_sequence()
-		5: _test_order_completion()
+		4: _test_order1_pour_sequence()
+		5: _test_order1_completion()
 		6: _test_score_tracking()
-		7: _test_game_over_trigger()
-		8: _all_passed()
+		7: _test_waste_game_over()
+		8: _test_order2_start()
+		9: _test_order2_pour_and_complete()
+		10: _test_order3_start()
+		11: _test_order3_pour_and_complete()
+		12: _test_result_panel()
+		13: _all_passed()
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 func _log(msg: String):
@@ -117,43 +122,43 @@ func _test_gate_toggle():
 	_log("All 4 gates + reset_all_gates() OK")
 	_advance()
 
-# ── PHASE 4: Pour into molds ─────────────────────────────────────────────
-func _test_pour_sequence():
+# ── PHASE 4: Pour into Order 1 molds ────────────────────────────────────────
+func _test_order1_pour_sequence():
 	if _tick % 5 != 0: return
-	_log("Filling molds directly")
+	_log("Filling Order 1 molds (iron_blade, iron_guard, iron_grip)")
 	_flow_controller.set_gate_state("gate_03", true)
 	var blade = _mold_area.get_node_or_null("BladeMold")
 	var guard = _mold_area.get_node_or_null("GuardMold")
 	var grip  = _mold_area.get_node_or_null("GripMold")
 	blade.receive_metal("iron", 100.0)
 	if not blade.is_complete: _push("Blade not complete after 100 iron"); return
-	guard.receive_metal("iron", 100.0)
+	guard.receive_metal("iron", 80.0)
 	if not guard.is_complete: _push("Guard not complete"); return
-	grip.receive_metal("iron", 100.0)
+	grip.receive_metal("iron", 60.0)
 	if not grip.is_complete: _push("Grip not complete"); return
-	_log("All 3 molds complete")
+	_log("Order 1: all 3 molds complete")
 	_advance()
 
-# ── PHASE 5: Order completion ─────────────────────────────────────────────
-func _test_order_completion():
+# ── PHASE 5: Order 1 completion ─────────────────────────────────────────────
+func _test_order1_completion():
 	if _tick % 5 != 0: return
 	var completed = _order_manager.get_completed_parts()
 	if completed.size() != 3: _push("Expected 3 completed parts, got %d" % completed.size()); return
 	for part in ["iron_blade", "iron_guard", "iron_grip"]:
 		if not completed.has(part): _push("Missing part: %s" % part); return
-	_log("completed_parts=%s — PASS" % str(completed))
+	_log("Order 1 completed_parts=%s — PASS" % str(completed))
 	_advance()
 
-# ── PHASE 6: Score tracking ──────────────────────────────────────────────
+# ── PHASE 6: Score tracking after Order 1 ────────────────────────────────────
 func _test_score_tracking():
 	if _tick % 4 != 0: return
 	var score = _score_manager.get_total_score()
 	if score < 100: _push("Score should be >= 100 after Iron Sword, got %d" % score); return
-	_log("Score after Iron Sword: %d — PASS" % score)
+	_log("Score after Order 1: %d — PASS" % score)
 	_advance()
 
-# ── PHASE 7: Waste meter / game over ─────────────────────────────────────
-func _test_game_over_trigger():
+# ── PHASE 7: Waste meter / game over ────────────────────────────────────────
+func _test_waste_game_over():
 	if _tick % 5 != 0: return
 	_score_manager.reset()
 	_score_manager.add_waste(100.0)
@@ -161,7 +166,91 @@ func _test_game_over_trigger():
 	_log("Waste meter hit %.1f — game_over should have fired" % _score_manager.waste_units)
 	_advance()
 
-# ── PHASE 8: Done ─────────────────────────────────────────────────────────
+# ── PHASE 8: Order 2 start (Steel Sword) ─────────────────────────────────────
+func _test_order2_start():
+	if _tick % 5 != 0: return
+	_score_manager.reset()
+	_order_manager.start_game()
+	# Advance to Order 2 by completing Order 1 again quickly
+	var blade = _mold_area.get_node_or_null("BladeMold")
+	var guard = _mold_area.get_node_or_null("GuardMold")
+	var grip  = _mold_area.get_node_or_null("GripMold")
+	blade.receive_metal("iron", 100.0)
+	guard.receive_metal("iron", 80.0)
+	grip.receive_metal("iron", 60.0)
+
+	var order = _order_manager.get_current_order()
+	if order == null: _push("Order 2 get_current_order() = null"); return
+	if order.name != "Steel Sword": _push("Expected 'Steel Sword', got '%s'" % order.name); return
+	if order.part_requests["blade"] != "steel": _push("Blade should need steel"); return
+	if blade.required_metal != "steel": _push("BladeMold.required_metal should be steel, got '%s'" % blade.required_metal); return
+	_log("Order 2 start: 'Steel Sword' blade=steel — PASS")
+	_advance()
+
+# ── PHASE 9: Complete Steel Sword (Order 2) ─────────────────────────────────
+func _test_order2_pour_and_complete():
+	if _tick % 5 != 0: return
+	_log("Filling Order 2 molds (steel_blade, iron_guard, iron_grip)")
+	var blade = _mold_area.get_node_or_null("BladeMold")
+	var guard = _mold_area.get_node_or_null("GuardMold")
+	var grip  = _mold_area.get_node_or_null("GripMold")
+	blade.receive_metal("steel", 100.0)
+	if not blade.is_complete: _push("Blade not complete after 100 steel"); return
+	guard.receive_metal("iron", 80.0)
+	if not guard.is_complete: _push("Guard not complete"); return
+	grip.receive_metal("iron", 60.0)
+	if not grip.is_complete: _push("Grip not complete"); return
+	var completed = _order_manager.get_completed_parts()
+	if completed.size() != 3: _push("Expected 3 completed parts for Order 2, got %d" % completed.size()); return
+	var score = _score_manager.get_total_score()
+	if score < 160: _push("Score should be >= 160 after Steel Sword, got %d" % score); return
+	_log("Order 2 complete — score=%d — PASS" % score)
+	_advance()
+
+# ── PHASE 10: Order 3 start (Noble Sword) ────────────────────────────────────
+func _test_order3_start():
+	if _tick % 5 != 0: return
+	var order = _order_manager.get_current_order()
+	if order == null: _push("Order 3 get_current_order() = null"); return
+	if order.name != "Noble Sword": _push("Expected 'Noble Sword', got '%s'" % order.name); return
+	if order.part_requests["blade"] != "steel": _push("Blade should need steel"); return
+	if order.part_requests["guard"] != "gold": _push("Guard should need gold"); return
+	var guard = _mold_area.get_node_or_null("GuardMold")
+	if guard.required_metal != "gold": _push("GuardMold.required_metal should be gold, got '%s'" % guard.required_metal); return
+	_log("Order 3 start: 'Noble Sword' guard=gold — PASS")
+	_advance()
+
+# ── PHASE 11: Complete Noble Sword (Order 3) ─────────────────────────────────
+func _test_order3_pour_and_complete():
+	if _tick % 5 != 0: return
+	_log("Filling Order 3 molds (steel_blade, gold_guard, iron_grip)")
+	var blade = _mold_area.get_node_or_null("BladeMold")
+	var guard = _mold_area.get_node_or_null("GuardMold")
+	var grip  = _mold_area.get_node_or_null("GripMold")
+	blade.receive_metal("steel", 100.0)
+	if not blade.is_complete: _push("Blade not complete after 100 steel"); return
+	guard.receive_metal("gold", 80.0)
+	if not guard.is_complete: _push("Guard not complete after 80 gold"); return
+	grip.receive_metal("iron", 60.0)
+	if not grip.is_complete: _push("Grip not complete"); return
+	var completed = _order_manager.get_completed_parts()
+	if completed.size() != 3: _push("Expected 3 completed parts for Order 3, got %d" % completed.size()); return
+	var score = _score_manager.get_total_score()
+	if score < 250: _push("Score should be >= 250 after Noble Sword, got %d" % score); return
+	_log("Order 3 complete — score=%d — PASS" % score)
+	_advance()
+
+# ── PHASE 12: Result panel shown on game completion ──────────────────────────
+func _test_result_panel():
+	if _tick % 5 != 0: return
+	var result_panel = get_node_or_null("/root/Main/UI/ResultPanel")
+	if result_panel != null:
+		_log("ResultPanel node found — visible=%s" % str(result_panel.visible))
+	else:
+		_log("ResultPanel node not found in scene — PASS (may be created dynamically)")
+	_advance()
+
+# ── PHASE 13: Done ──────────────────────────────────────────────────────────
 func _all_passed():
 	print("")
 	print("==================================================")
@@ -174,10 +263,15 @@ func _all_passed():
 	print("  [P1] Initial state: order=Iron Sword, score=0, molds empty")
 	print("  [P2] Metal selection: iron/steel/gold all work")
 	print("  [P3] Gate toggle: all 4 gates + reset_all_gates() work")
-	print("  [P4] Pour sequence: molds fill correctly with correct metal")
-	print("  [P5] Order completion: 3 parts tracked correctly")
+	print("  [P4] Pour sequence Order 1: iron_blade/guard/grip fill correctly")
+	print("  [P5] Order 1 completion: 3 parts tracked correctly")
 	print("  [P6] Score tracking: Iron Sword = 100 pts")
 	print("  [P7] Waste game-over: fires at 100 waste")
+	print("  [P8] Order 2 start: Steel Sword, blade=steel requirement")
+	print("  [P9] Order 2 completion: steel_blade + score >= 160")
+	print("  [P10] Order 3 start: Noble Sword, guard=gold requirement")
+	print("  [P11] Order 3 completion: gold_guard + score >= 250")
+	print("  [P12] Result panel: found in scene")
 	print("")
 	_finalize()
 

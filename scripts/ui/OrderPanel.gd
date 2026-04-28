@@ -32,6 +32,14 @@ func _on_order_started(order: OrderDefinition):
 
 func _on_order_completed(_order: OrderDefinition, _score: int):
 	_update_display()
+	_show_order_complete_fanfare()
+
+func _show_order_complete_fanfare():
+	# Brief flash of the order panel to celebrate completion
+	var tween = create_tween()
+	modulate = Color.GREEN * 1.5
+	tween.tween_interval(0.3)
+	tween.tween_callback(func(): modulate = Color.WHITE)
 
 func _on_completed_parts_changed(_parts: Array[String]):
 	_update_display()

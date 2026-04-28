@@ -12,8 +12,35 @@ func _ready():
 	score_manager.contamination_penalty.connect(_on_contamination_penalty)
 	_update_display()
 
+var _last_waste_value: float = 0.0
+
 func _on_waste_updated(_waste_amount: float):
 	_update_display()
+	# Show floating waste label when waste increases
+	var prev = _last_waste_value
+	_last_waste_value = _waste_amount
+	if _waste_amount > prev:
+		_show_waste_floating_label(_waste_amount - prev)
+
+func _show_waste_floating_label(amount: float):
+	var label = Label.new()
+	label.name = "WasteFloat"
+	label.text = "+%.0f Waste" % amount
+	label.modulate = Color.ORANGE
+	label.z_index = 200
+	# Position near waste bar
+	var bar = get_node_or_null("WasteBar")
+	if bar:
+		label.position = bar.global_position + Vector2(160, -20)
+	else:
+		label.position = Vector2(160, -20)
+	add_child(label)
+
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y - 40, 0.8)
+	tween.tween_property(label, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(label.queue_free)
 
 func _on_score_updated(_total_score: int):
 	_update_display()

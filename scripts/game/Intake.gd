@@ -1,7 +1,11 @@
 extends Area2D
 
 signal metal_received(metal_id: String, amount: float)
-signal intake_entered(area: Area2D)
+# intake_entered was a dead signal — no handler ever connected to it.
+# The actual metal routing happens via FlowController's registered
+# area_entered handler (registered in register_intake). If a visual
+# or audio cue is needed on intake entry, connect to metal_received instead.
+# signal intake_entered(area: Area2D)
 
 @export var intake_id: String = "intake_a"
 
@@ -50,7 +54,6 @@ func _on_area_entered(area: Area2D):
 		var amount = area.get_metal_amount() if area.has_method("get_metal_amount") else 1.0
 		current_metal = metal_id
 		metal_received.emit(metal_id, amount)
-		intake_entered.emit(area)
 		_trigger_intake_glow(metal_id)
 
 func _on_flow_routed(intake_id_from_signal: String, _mold_id: String, _metal_id: String, _amount: float):
@@ -79,4 +82,5 @@ func set_active(active: bool):
 	is_active = active
 
 func _get_metal_color(metal_id: String) -> Color:
-	return MetalDefinition.get_color(metal_id).linear_to_srgb()
+	# MetalDefinition.get_color returns sRGB Colors — no conversion needed.
+	return MetalDefinition.get_color(metal_id)
