@@ -24,9 +24,10 @@ func _setup_orders():
 	var steel_parts: Array[String] = ["steel_blade", "iron_guard", "iron_grip"]
 	var noble_parts: Array[String] = ["steel_blade", "gold_guard", "iron_grip"]
 
-	orders.append(OrderDefinition.new("order_1", "Iron Sword", iron_parts, 100))
-	orders.append(OrderDefinition.new("order_2", "Steel Sword", steel_parts, 160))
-	orders.append(OrderDefinition.new("order_3", "Noble Sword", noble_parts, 250))
+	# part_requests: part_type -> required_metal
+	orders.append(OrderDefinition.new("order_1", "Iron Sword", iron_parts, {"blade": "iron", "guard": "iron", "grip": "iron"}, 100))
+	orders.append(OrderDefinition.new("order_2", "Steel Sword", steel_parts, {"blade": "steel", "guard": "iron", "grip": "iron"}, 160))
+	orders.append(OrderDefinition.new("order_3", "Noble Sword", noble_parts, {"blade": "steel", "guard": "gold", "grip": "iron"}, 250))
 
 func get_metal(metal_id: String) -> MetalDefinition:
 	return metals.get(metal_id)
