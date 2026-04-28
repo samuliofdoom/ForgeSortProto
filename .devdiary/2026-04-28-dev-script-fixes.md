@@ -85,6 +85,9 @@ Fixed all three. After fixes, running with `-d` produces zero warnings.
 |------|--------|
 | `dev/ProblemReader.gd` | Line 24: added missing `"` closing quote |
 | `dev/semantic_check.gd` | Line 34: added missing `"` closing quote; Line 30: removed `GDScriptParser.new()` (Godot 4.x incompatible) |
+| `scripts/game/Gate.gd` | Line 29: renamed param `gate_id` → `p_gate_id` to avoid shadowing `@export var gate_id` |
+| `scripts/ui/GateToggleUI.gd` | Removed unused `signal gate_toggled` |
+| `scripts/ui/MetalSelector.gd` | Removed unused `signal metal_selected` |
 
 ---
 
