@@ -31,9 +31,6 @@ func _setup_gates():
 	for gate_id in ["gate_01", "gate_02", "gate_03", "gate_04"]:
 		gate_states[gate_id] = false
 
-func register_gate(_gate_id: String, _gate_node: Node):
-	pass
-
 func register_intake(intake_id: String, intake_node: Node):
 	intakes[intake_id] = intake_node
 	intake_node.area_entered.connect(_on_intake_area_entered.bind(intake_id))
@@ -111,20 +108,16 @@ func get_mold_for_pour_position(world_position: Vector2) -> Dictionary:
 		pour_intake = "intake_c"
 
 	# Check which open gates cover this intake
-	var active_gates = []
+	# NEW-001 fix: use pour_intake directly, not active_gates[0].
+	# This fixes wrong-mold routing when multiple gates are open:
+	# with G1(A,B)+G2(B,C) both open, pouring at intake_b now correctly
+	# returns guard (mold for intake_b), not blade (mold for intake_a).
 	for gate_id in GATE_ROUTING.keys():
 		if get_gate_state(gate_id):
 			var gated_intakes = GATE_ROUTING[gate_id]
 			if pour_intake in gated_intakes:
-				for g_intake in gated_intakes:
-					if not active_gates.has(g_intake):
-						active_gates.append(g_intake)
-
-	if active_gates.size() > 0:
-		# At least one gate is open and covers this intake zone
-		# Route to the first available mold
-		var mold_id = INTAKE_TO_MOLD.get(active_gates[0], "")
-		return {"mold_id": mold_id, "intake_id": ""}
+				var mold_id = INTAKE_TO_MOLD.get(pour_intake, "")
+				return {"mold_id": mold_id, "intake_id": ""}
 
 	# No open gate covers this intake — the pour is wasted (blocked intake)
 	if pour_intake != "":
