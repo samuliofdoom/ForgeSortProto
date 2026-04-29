@@ -53,7 +53,7 @@ func flush_accumulator(metal_id: String, pour_origin: Vector2):
 	if pour_accumulator >= 1.0:
 		var amount = floor(pour_accumulator)
 		pour_accumulator = 0.0
-		_route_fallback(metal_id, pour_origin, amount)
+		_route_fallback(metal_id, pour_origin, amount, false)
 
 func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 	_last_pour_metal = metal_id
@@ -98,7 +98,7 @@ func _get_intake_for_position(pour_pos: Vector2) -> String:
 	else:
 		return "intake_c"
 
-func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float):
+func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float, penalize: bool = true):
 	var nearest_mold_id = ""
 	var nearest_dist = INF
 
@@ -110,7 +110,8 @@ func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float):
 				nearest_mold_id = mold_id
 
 	if nearest_mold_id and molds[nearest_mold_id]:
-		# Fallback routing delivers metal to nearest mold (correct behavior).
+		# Fallback routing delivers metal to nearest mold (correct behavior.)
 		# waste_routed.emit() fires for visual feedback only — no score penalty.
+		# penalize controls whether receive_metal applies waste penalty (false from flush_accumulator).
 		waste_routed.emit(metal_id, pour_pos, amount)
-		molds[nearest_mold_id].receive_metal(metal_id, amount)
+		molds[nearest_mold_id].receive_metal(metal_id, amount, penalize)
