@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="GDScript" id="GDScript_furnace_atmosphere"]
+script = null
+
+[node name="FurnaceAtmosphere" type="Node2D"]
+z_index = -90
+script = SubResource("GDScript_furnace_atmosphere")
+
+[node name="FurnaceGlowShader" type="Node2D" parent="."]
+position = Vector2(200, -30)
+
+[node name="EmberEmitter" type="Node2D" parent="."]
+z_index = -80

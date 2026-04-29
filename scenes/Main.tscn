@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/GameController.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/game/PourZone.gd" id="2_pourzone"]
@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://scripts/ui/SpeedTimer.gd" id="14_speedtimer"]
 [ext_resource type="Script" path="res://scripts/ui/GateDebugHUD.gd" id="15_gatedebughud"]
 [ext_resource type="Script" path="res://scripts/ui/OrderChecklistUI.gd" id="16_orderchecklist"]
+[ext_resource type="PackedScene" path="res://scenes/FurnaceAtmosphere.tscn" id="17_furnace_atmosphere"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_intake"]
 size = Vector2(40, 30)
@@ -28,6 +29,10 @@ colors = PackedColorArray(0.08, 0.04, 0.02, 1.0, 0.15, 0.08, 0.04, 1.0)
 
 [sub_resource type="Gradient" id="Gradient_furnace_glow"]
 colors = PackedColorArray(1.0, 0.5, 0.1, 0.0, 1.0, 0.4, 0.05, 0.0)
+offsets = PackedFloat32Array(0.0, 1.0)
+
+[sub_resource type="Gradient" id="Gradient_heat_overlay"]
+colors = PackedColorArray(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.35)
 offsets = PackedFloat32Array(0.0, 1.0)
 
 [node name="Main" type="Node"]
@@ -60,31 +65,41 @@ offset_right = 250.0
 offset_bottom = 150.0
 color = Color(1.0, 0.4, 0.05, 0.6)
 
-[node name="FurnaceAtmosphere" type="Node" parent="FurnaceGlow"]
-script = null
+[node name="FurnaceAtmosphere" parent="FurnaceGlow" instance=ExtResource("17_furnace_atmosphere")]
+
+[node name="HeatDarkeningOverlay" type="ColorRect" parent="."]
+z_index = -85
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 400.0
+offset_bottom = 600.0
+color = Color(0.0, 0.0, 0.0, 0.35)
 
 [node name="EmberParticles" type="CPUParticles2D" parent="."]
 z_index = -80
 position = Vector2(200, 0)
-amount = 40
-lifetime = 3.5
+amount = 35
+lifetime = 4.0
 one_shot = false
-spread = 30.0
-gravity = Vector2(0, -80)
-initial_velocity_min = 30.0
-initial_velocity_max = 60.0
-angular_velocity_min = -100.0
-angular_velocity_max = 100.0
-linear_accel_min = -20.0
-linear_accel_max = -50.0
-color = Color(1.0, 0.45, 0.1, 1.0)
-hue_variation_min = -0.1
-hue_variation_max = 0.1
-anim_speed_min = 0.5
-anim_speed_max = 1.5
+spread = 45.0
+gravity = Vector2(0, -60)
+initial_velocity_min = 20.0
+initial_velocity_max = 40.0
+angular_velocity_min = -50.0
+angular_velocity_max = 50.0
+linear_accel_min = -10.0
+linear_accel_max = -30.0
+color = Color(1.0, 0.5, 0.12, 1.0)
+hue_variation_min = -0.08
+hue_variation_max = 0.08
+anim_speed_min = 0.8
+anim_speed_max = 2.0
 anim_offset_max = 1.0
-scale_amount_min = 1.5
-scale_amount_max = 3.5
+scale_amount_min = 1.0
+scale_amount_max = 2.5
 
 [node name="MetalFlow" type="Node" parent="."]
 script = ExtResource("10_metalflow")
