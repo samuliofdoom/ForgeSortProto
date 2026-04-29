@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 detect_unused_params.py
 Static checker for GDScript unused function parameters.
