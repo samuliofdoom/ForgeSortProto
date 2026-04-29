@@ -9,6 +9,8 @@ signal mold_tapped(mold_id: String)
 
 enum MoldState { IDLE, FILLING, COMPLETE, HARDENING, CONTAMINATED, LOCKED }
 
+const HARDENING_SHRINK_SCALE: Vector2 = Vector2(0.95, 0.95)
+
 @export var mold_id: String = "blade"
 @export var part_type: String = "blade"
 @export var required_metal: String = "iron"
@@ -24,6 +26,13 @@ var mold_state: MoldState = MoldState.IDLE
 
 var _hardening_timer: Timer = null
 var _display_tween: Tween = null  # kills previous before creating new to prevent tween accumulation
+var _hardening_tween: Tween = null
+var _complete_settle_tween: Tween = null
+var _complete_effect_tween: Tween = null
+var _contamination_effect_tween: Tween = null
+var _wrong_metal_flash_tween: Tween = null
+var _receiving_glow_tween: Tween = null
+var _clear_effect_tween: Tween = null
 
 @onready var fill_bar: ProgressBar = $FillBar
 @onready var state_label: Label = $StateLabel
@@ -372,65 +381,79 @@ func _stop_padlock_pulse():
 
 func _create_contamination_effect():
 	if mold_sprite:
-		var tween = create_tween()
-		tween.tween_property(mold_sprite, "modulate", Color.RED, 0.1)
-		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.3)
+		if _contamination_effect_tween:
+			_contamination_effect_tween.kill()
+		_contamination_effect_tween = create_tween()
+		_contamination_effect_tween.tween_property(mold_sprite, "modulate", Color.RED, 0.1)
+		_contamination_effect_tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.3)
 
 func _trigger_wrong_metal_flash(_wrong_metal: String):
 	# Distinct pre-contamination flash: orange warning before red contamination
 	if mold_sprite:
-		var tween = create_tween()
-		tween.tween_property(mold_sprite, "modulate", Color.ORANGE, 0.08)
-		tween.tween_property(mold_sprite, "modulate", Color.RED, 0.08)
+		if _wrong_metal_flash_tween:
+			_wrong_metal_flash_tween.kill()
+		_wrong_metal_flash_tween = create_tween()
+		_wrong_metal_flash_tween.tween_property(mold_sprite, "modulate", Color.ORANGE, 0.08)
+		_wrong_metal_flash_tween.tween_property(mold_sprite, "modulate", Color.RED, 0.08)
 
 func _create_receiving_glow(metal_id: String):
 	# Brief bright flash when metal enters the mold
 	if mold_sprite:
+		if _receiving_glow_tween:
+			_receiving_glow_tween.kill()
 		var color = MetalDefinition.get_color(metal_id)
-		var tween = create_tween()
-		tween.tween_property(mold_sprite, "modulate", color * 1.5, 0.1)
-		tween.tween_property(mold_sprite, "modulate", color * 0.7, 0.2)
+		_receiving_glow_tween = create_tween()
+		_receiving_glow_tween.tween_property(mold_sprite, "modulate", color * 1.5, 0.1)
+		_receiving_glow_tween.tween_property(mold_sprite, "modulate", color * 0.7, 0.2)
 
 func _animate_hardening():
 	# Flash WHITE (0.1s) -> desaturate to gray-blue (0.3s) -> darken to cool steel (0.4s)
 	# Scale: slight shrink to 0.95 (0.2s, ease_in)
 	if mold_sprite:
-		var tween = create_tween()
-		tween.set_parallel(false)
+		if _hardening_tween:
+			_hardening_tween.kill()
+		_hardening_tween = create_tween()
+		_hardening_tween.set_parallel(false)
 		# Flash white
-		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.1)
+		_hardening_tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.1)
 		# Desaturate to gray-blue
-		tween.tween_property(mold_sprite, "modulate", Color(0.7, 0.72, 0.75), 0.3)
+		_hardening_tween.tween_property(mold_sprite, "modulate", Color(0.7, 0.72, 0.75), 0.3)
 		# Darken to final cooled color
-		tween.tween_property(mold_sprite, "modulate", Color(0.5, 0.55, 0.6), 0.4)
+		_hardening_tween.tween_property(mold_sprite, "modulate", Color(0.5, 0.55, 0.6), 0.4)
 		# Scale shrink with ease_in
 		var scale_tween = create_tween()
-		scale_tween.tween_property(mold_sprite, "scale", Vector2(0.95, 0.95), 0.2).set_ease(Tween.EASE_IN)
+		scale_tween.tween_property(mold_sprite, "scale", HARDENING_SHRINK_SCALE, 0.2).set_ease(Tween.EASE_IN)
 
 func _animate_complete_settle():
 	# Scale back to 1.0 (0.2s, elastic ease)
 	# Label already set to "Done!" in green by _update_display
 	if mold_sprite:
-		var tween = create_tween()
-		tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+		if _complete_settle_tween:
+			_complete_settle_tween.kill()
+		_complete_settle_tween = create_tween()
+		_complete_settle_tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
 
 func _create_complete_effect():
 	if mold_sprite:
-		var tween = create_tween()
-		tween.set_parallel(false)
+		if _complete_effect_tween:
+			_complete_effect_tween.kill()
+		_complete_effect_tween = create_tween()
+		_complete_effect_tween.set_parallel(false)
 		# Chain: flash (0.1s) -> desaturate (0.2s) -> darken (0.3s) = 0.6s, then scale bounce
 		# Flash white
-		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.1)
+		_complete_effect_tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.1)
 		# Desaturate to gray-blue
-		tween.tween_property(mold_sprite, "modulate", Color(0.7, 0.72, 0.75), 0.2)
+		_complete_effect_tween.tween_property(mold_sprite, "modulate", Color(0.7, 0.72, 0.75), 0.2)
 		# Darken to cool steel
-		tween.tween_property(mold_sprite, "modulate", Color(0.5, 0.55, 0.6), 0.3)
+		_complete_effect_tween.tween_property(mold_sprite, "modulate", Color(0.5, 0.55, 0.6), 0.3)
 		# Scale bounce (0.2s) with elastic ease
-		tween.tween_property(mold_sprite, "scale", Vector2(1.2, 1.2), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
-		tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.15).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		_complete_effect_tween.tween_property(mold_sprite, "scale", Vector2(1.2, 1.2), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+		_complete_effect_tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.15).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 
 func _create_clear_effect():
 	if mold_sprite:
-		var tween = create_tween()
-		tween.tween_property(mold_sprite, "modulate", Color.BLUE * 0.3, 0.2)
-		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.2)
+		if _clear_effect_tween:
+			_clear_effect_tween.kill()
+		_clear_effect_tween = create_tween()
+		_clear_effect_tween.tween_property(mold_sprite, "modulate", Color.BLUE * 0.3, 0.2)
+		_clear_effect_tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.2)
