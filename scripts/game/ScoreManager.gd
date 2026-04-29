@@ -3,11 +3,13 @@ extends Node
 signal score_updated(total: int)
 signal waste_updated(waste_percent: float)
 signal contamination_penalty(penalty: int)
+signal contamination_this_order_updated(count: int)
 signal game_over(final_score: int, waste_percent: float)
 
 var total_score: int = 0
 var waste_units: float = 0.0
 var contamination_count: int = 0
+var contamination_this_order: int = 0
 var start_time: int = 0
 var order_start_time: int = 0
 var game_started: bool = false
@@ -16,6 +18,7 @@ var _game_over_fired: bool = false
 const WASTE_PENALTY_PER_UNIT: float = 1.0
 const CONTAMINATION_PENALTY: int = 25
 const SPEED_BONUS: int = 50
+const ZERO_CONTAMINATION_BONUS: int = 25
 const SPEED_THRESHOLD_SECONDS: float = 30.0
 const WASTE_METER_MAX: float = 100.0
 
@@ -28,17 +31,20 @@ func reset():
 	total_score = 0
 	waste_units = 0.0
 	contamination_count = 0
+	contamination_this_order = 0
 	_game_over_fired = false
 	start_time = Time.get_ticks_msec()
 	order_start_time = start_time
 	score_updated.emit(total_score)
 	waste_updated.emit(0.0)
+	contamination_this_order_updated.emit(0)
 
 func start_order_timer():
 	order_start_time = Time.get_ticks_msec()
 
 func reset_order():
 	contamination_count = 0
+	contamination_this_order = 0
 
 func add_waste(amount: float):
 	waste_units += amount
@@ -55,9 +61,11 @@ func add_waste(amount: float):
 
 func add_contamination():
 	contamination_count += 1
+	contamination_this_order += 1
 	total_score = max(0, total_score - CONTAMINATION_PENALTY)
 	contamination_penalty.emit(CONTAMINATION_PENALTY)
 	score_updated.emit(total_score)
+	contamination_this_order_updated.emit(contamination_this_order)
 
 func calculate_order_score(order: OrderDefinition) -> int:
 	var base = order.base_value
@@ -65,6 +73,9 @@ func calculate_order_score(order: OrderDefinition) -> int:
 
 	if elapsed < SPEED_THRESHOLD_SECONDS:
 		base += SPEED_BONUS
+
+	if contamination_this_order == 0:
+		base += ZERO_CONTAMINATION_BONUS
 
 	total_score += base
 	score_updated.emit(total_score)

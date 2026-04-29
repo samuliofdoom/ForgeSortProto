@@ -6,8 +6,13 @@ extends Control
 
 @onready var checklist_container: VBoxContainer = $ChecklistContainer
 @onready var title_label: Label = $TitleLabel
+@onready var timer_label: Label = $TimerContainer/TimerLabel
+@onready var timer_container: HBoxContainer = $TimerContainer
+@onready var speed_bonus_label: Label = $TimerContainer/SpeedBonusLabel
+@onready var contamination_label: Label = $ContaminationContainer/ContaminationLabel
 
 var order_manager: Node
+var score_manager: Node
 var _current_parts: Array[String] = []
 var _check_rows: Dictionary = {}  # part_id -> {row: HBoxContainer, check: Label}
 
@@ -16,6 +21,10 @@ func _ready():
 	if order_manager:
 		order_manager.order_started.connect(_on_order_started)
 		order_manager.completed_parts_changed.connect(_on_completed_parts_changed)
+
+	score_manager = get_node_or_null("/root/ScoreManager")
+	if score_manager:
+		score_manager.contamination_this_order_updated.connect(_on_contamination_updated)
 
 	# Also listen to mold part_produced for real-time checklist updates
 	var mold_area = get_node_or_null("/root/Main/MoldArea")
@@ -29,6 +38,7 @@ func _ready():
 func _on_order_started(order: OrderDefinition):
 	_current_parts = order.parts.duplicate()
 	_build_checklist()
+	_reset_timer_display()
 
 func _on_completed_parts_changed(completed: Array[String]):
 	_refresh_checks(completed)
@@ -37,6 +47,47 @@ func _on_part_produced(_part_id: String, _mold_id: String):
 	# Refresh checks when a part is produced (handles any ordering edge cases)
 	if order_manager:
 		_refresh_checks(order_manager.get_completed_parts())
+
+func _process(_delta):
+	if not timer_container.visible:
+		return
+	if not score_manager or score_manager.order_start_time == 0:
+		return
+	var elapsed = (Time.get_ticks_msec() - score_manager.order_start_time) / 1000.0
+	var remaining = max(0.0, 30.0 - elapsed)
+	timer_label.text = "%.1fs" % elapsed
+	speed_bonus_label.text = "(+%.0f speed)" % remaining if remaining > 0 else "(no speed)"
+	_update_timer_color(elapsed)
+
+func _update_timer_color(elapsed: float):
+	if elapsed < 25.0:
+		timer_label.modulate = Color.WHITE
+		speed_bonus_label.modulate = Color.GREEN
+	elif elapsed < 30.0:
+		timer_label.modulate = Color.ORANGE
+		speed_bonus_label.modulate = Color.YELLOW
+	else:
+		timer_label.modulate = Color.RED
+		speed_bonus_label.modulate = Color.RED
+
+func _reset_timer_display():
+	timer_label.text = "0.0s"
+	speed_bonus_label.text = "(+30 speed)"
+	timer_label.modulate = Color.WHITE
+	speed_bonus_label.modulate = Color.GREEN
+	if contamination_label:
+		contamination_label.text = "Contamination: 0"
+		contamination_label.modulate = Color.GREEN
+
+func _on_contamination_updated(count: int):
+	if contamination_label:
+		contamination_label.text = "Contamination: %d" % count
+		if count == 0:
+			contamination_label.modulate = Color.GREEN
+		elif count < 3:
+			contamination_label.modulate = Color.YELLOW
+		else:
+			contamination_label.modulate = Color.RED
 
 func _refresh_checks(completed: Array[String]):
 	for part_id in _check_rows:
@@ -83,6 +134,7 @@ func _build_checklist():
 
 	# Apply initial modulate to title based on completion
 	_refresh_checks(completed)
+	_reset_timer_display()
 
 func _update_visibility():
 	visible = (_current_parts.size() > 0)
