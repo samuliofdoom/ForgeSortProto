@@ -59,7 +59,7 @@ func _update_visual():
 				light.name = "GateLight"
 				light.color = Color.GREEN
 				light.energy = 0.6
-				light.range = 80
+				light.texture_scale = 2.0
 				light.height = 1.0
 				visual.add_child(light)
 		else:

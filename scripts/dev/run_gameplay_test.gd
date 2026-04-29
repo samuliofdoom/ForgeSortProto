@@ -5,48 +5,79 @@ var _failures: int = 0
 func _init():
 	print("=== FORGESORTPROTO GAMEPLAY INTEGRATION TEST ===")
 
-	# ── Instantiate all components ────────────────────────────────────────
+	# ── Load all script classes ───────────────────────────────────────────
 	var MetalSourceClass    = load("res://scripts/game/MetalSource.gd")
 	var FlowControllerClass = load("res://scripts/game/FlowController.gd")
-	var ScoreManagerClass  = load("res://scripts/game/ScoreManager.gd")
-	var OrderManagerClass  = load("res://scripts/game/OrderManager.gd")
-	var MoldClass          = load("res://scripts/game/Mold.gd")
-	var GameDataClass      = load("res://scripts/data/GameData.gd")
+	var ScoreManagerClass   = load("res://scripts/game/ScoreManager.gd")
+	var OrderManagerClass   = load("res://scripts/game/OrderManager.gd")
+	var MoldClass           = load("res://scripts/game/Mold.gd")
+	var GameDataClass       = load("res://scripts/data/GameData.gd")
 
-	var score_manager = ScoreManagerClass.new()
+	# ── GameData: populate definitions ───────────────────────────────────
 	var game_data = GameDataClass.new()
 	game_data._ready()
 
+	# ── ScoreManager: _ready() is `pass` — safe to call ────────────────
+	var score_manager = ScoreManagerClass.new()
+	score_manager._ready()
+
+	# ── FlowController extends Node: use Node.new() + set_script().
+	#    _ready() calls get_node_or_null (returns null, harmless) and
+	#    _setup_gates() which populates gate_states{}.
+	var flow_controller = Node.new()
+	flow_controller.set_script(FlowControllerClass)
+	flow_controller.game_controller = null
+	flow_controller._ready()   # populates gate_states{}
+
+	# ── MetalSource: _ready() auto-runs during .new() AND calls
+	#    get_node("/root/GameData") which returns null here.
+	#    Use Node.new() + set_script() to defer _ready() until after
+	#    game_data is injected.
+	var metal_source = Node.new()
+	metal_source.set_script(MetalSourceClass)
+	metal_source.game_data = game_data
+	metal_source.selected_metal = "iron"
+	metal_source.is_pouring = false
+
+	# ── OrderManager: _ready() calls get_node() for all deps.
+	#    Use Node.new() + set_script() to defer _ready().
 	var order_manager = Node.new()
 	order_manager.set_script(OrderManagerClass)
 	order_manager.game_data = game_data
 	order_manager.score_manager = score_manager
 
-	var metal_source = MetalSourceClass.new()
-	var flow_controller = FlowControllerClass.new()
-
-	# Create a minimal MoldArea with 3 molds
+	# ── Mold extends Node2D: must use Node2D.new() (not Object.new()).
+	#    Mold._ready() uses add_child() which works outside the scene tree,
+	#    but _start_hardening_timer() calls Timer.start() which needs the
+	#    node IN the tree. Fix: add molds to SceneTree.root first.
+	#    Mold._ready() also calls get_node() for 4 deps — skip it and
+	#    inject deps manually.
 	var mold_area = Node.new()
 	mold_area.name = "MoldArea"
+	root.add_child(mold_area)
+
 	var mold_defs = [["blade", "iron"], ["guard", "iron"], ["grip", "iron"]]
-	for i in range(mold_defs.size()):
-		var pair = mold_defs[i]
-		var m = MoldClass.new()
+	for pair in mold_defs:
+		var m: Node2D = Node2D.new()
+		m.set_script(MoldClass)
 		m.name = pair[0].capitalize() + "Mold"
+		# Inject deps Mold._ready() would fetch via get_node()
+		m.game_data = game_data
+		m.score_manager = score_manager
 		m.mold_id = pair[0]
+		m.part_type = pair[0]
+		# Mold uses Node2D features (rotation, scale, z_index) — add to tree
+		# BEFORE _ready() so add_child() calls inside _ready() work.
 		mold_area.add_child(m)
+		m._ready()   # sets up padlock, fill_bar, state label, etc.
 
-	# Wire each mold to score_manager (needed for waste/contamination tracking)
-	for child in mold_area.get_children():
-		child.score_manager = score_manager
-
-	# Track game_over signal
+	# ── Track game_over signal ─────────────────────────────────────────
 	var game_over_fired: bool = false
 	score_manager.game_over.connect(func(_fs, _wp): game_over_fired = true)
 
 	print("All autoloads instantiated — running checks")
 
-	# ── Check 1: Initial state ──────────────────────────────────────────────
+	# ── Check 1: Initial state ─────────────────────────────────────────
 	print("\n[Check 1] Initial state")
 	order_manager.start_game()
 
@@ -66,7 +97,7 @@ func _init():
 	_check(grip.is_complete  == false, "Grip should not be complete initially")
 	print("  PASS")
 
-	# ── Check 2: Metal selection ────────────────────────────────────────────
+	# ── Check 2: Metal selection ──────────────────────────────────────
 	print("\n[Check 2] Metal selection")
 	_check(metal_source.get_selected_metal() == "iron", "Default metal should be iron")
 	metal_source.select_metal_by_id("steel")
@@ -79,7 +110,7 @@ func _init():
 	_check(metal_data.speed > 0.0, "Metal speed should be positive")
 	print("  PASS")
 
-	# ── Check 3: Gate toggle ───────────────────────────────────────────────
+	# ── Check 3: Gate toggle ───────────────────────────────────────────
 	print("\n[Check 3] Gate toggle")
 	for gid in ["gate_01", "gate_02", "gate_03", "gate_04"]:
 		var before = flow_controller.get_gate_state(gid)
@@ -93,7 +124,8 @@ func _init():
 	_check(flow_controller.get_gate_state("gate_01") == false, "reset_all_gates() failed")
 	print("  PASS")
 
-	# ── Check 4: Pour sequence — molds fill correctly ───────────────────────
+	# ── Check 4: Pour sequence — molds fill correctly ──────────────────
+	# Mold nodes are in the scene tree, so Timer.start() works.
 	print("\n[Check 4] Pour sequence")
 	blade.receive_metal("iron", 100.0)
 	_check(blade.is_complete == true, "Blade should be complete after 100 iron")
@@ -103,9 +135,8 @@ func _init():
 	_check(grip.is_complete == true, "Grip should be complete")
 	print("  PASS")
 
-	# ── Check 5: Order completion (3 parts) ─────────────────────────────────
+	# ── Check 5: Order completion (3 parts) ───────────────────────────
 	print("\n[Check 5] Order completion")
-	# Complete all 3 parts via order_manager
 	order_manager.complete_part("iron_blade")
 	order_manager.complete_part("iron_guard")
 	order_manager.complete_part("iron_grip")
@@ -117,13 +148,13 @@ func _init():
 	_check(completed.has("iron_grip"),  "iron_grip should be completed")
 	print("  PASS")
 
-	# ── Check 6: Score tracking ────────────────────────────────────────────
+	# ── Check 6: Score tracking ───────────────────────────────────────
 	print("\n[Check 6] Score tracking")
-	var score = score_manager.get_total_score()
-	_check(score >= 100, "Score should be >= 100 after Iron Sword, got %d" % score)
-	print("  Score after Iron Sword: %d — PASS" % score)
+	var sc = score_manager.get_total_score()
+	_check(sc >= 100, "Score should be >= 100 after Iron Sword, got %d" % sc)
+	print("  Score after Iron Sword: %d — PASS" % sc)
 
-	# ── Check 7: Waste meter → game_over ──────────────────────────────────
+	# ── Check 7: Waste meter → game_over ──────────────────────────────
 	print("\n[Check 7] Waste meter → game_over")
 	score_manager.reset()
 	game_over_fired = false
@@ -131,7 +162,7 @@ func _init():
 	_check(game_over_fired == true, "game_over should fire when waste >= 100")
 	print("  PASS")
 
-	# ── Summary ─────────────────────────────────────────────────────────────
+	# ── Summary ───────────────────────────────────────────────────────
 	print("")
 	if _failures == 0:
 		print("==================================================")
