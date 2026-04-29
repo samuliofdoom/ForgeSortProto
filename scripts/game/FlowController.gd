@@ -7,6 +7,7 @@ var gate_states: Dictionary = {}
 
 var intakes: Dictionary = {}
 var molds: Dictionary = {}
+var game_controller: Node = null
 
 const INTAKE_TO_MOLD: Dictionary = {
 	"intake_a": "blade",
@@ -25,6 +26,7 @@ const GATE_ROUTING: Dictionary = {
 
 func _ready():
 	_setup_gates()
+	game_controller = get_node("/root/GameController")
 	# Note: stream_entered_intake signal was never declared — removed spurious connect
 
 func _setup_gates():
@@ -92,7 +94,7 @@ func reset_all_gates():
 # intake_id is non-empty when the pour position targets a blocked intake (waste).
 # Both empty = pour was outside all intake zones (fallback routing).
 func get_mold_for_pour_position(world_position: Vector2) -> Dictionary:
-	var mold_area = get_node_or_null("/root/Main/MoldArea")
+	var mold_area = game_controller.get_mold_area() if game_controller else null
 	if not mold_area:
 		return {"mold_id": "", "intake_id": ""}
 

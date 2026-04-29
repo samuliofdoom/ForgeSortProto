@@ -8,6 +8,7 @@ var metal_source: Node
 var game_data: Node
 var flow_controller: Node
 var score_manager: Node
+var game_controller: Node
 var molds: Dictionary = {}
 
 var pour_accumulator: float = 0.0
@@ -22,6 +23,7 @@ func _ready():
 	game_data = get_node("/root/GameData")
 	flow_controller = get_node("/root/FlowController")
 	score_manager = get_node("/root/ScoreManager")
+	game_controller = get_node("/root/GameController")
 
 func _process(delta):
 	if active_pour_zone and active_pour_zone.is_pouring:
@@ -81,7 +83,7 @@ func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 			_route_fallback(metal_id, pour_pos, amount)
 
 func _get_intake_for_position(pour_pos: Vector2) -> String:
-	var mold_area = get_node_or_null("/root/Main/MoldArea")
+	var mold_area = game_controller.get_mold_area() if game_controller else null
 	if not mold_area:
 		return ""
 

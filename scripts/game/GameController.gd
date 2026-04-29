@@ -7,6 +7,7 @@ var order_manager: Node
 var metal_flow: Node
 var score_manager: Node
 var flow_controller: Node
+var _mold_area_cache: Node = null
 
 func _ready():
 	order_manager = get_node("/root/OrderManager")
@@ -22,6 +23,11 @@ func _ready():
 		score_manager.game_over.connect(_on_game_over)
 
 	_setup_molds()
+
+func get_mold_area() -> Node:
+	if _mold_area_cache == null:
+		_mold_area_cache = get_node_or_null("MoldArea")
+	return _mold_area_cache
 
 func _on_start_pressed():
 	start_button.hide()
