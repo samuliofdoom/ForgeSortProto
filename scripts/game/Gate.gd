@@ -10,6 +10,9 @@ signal gate_interacted(gate_id: String)
 @onready var collision: CollisionShape2D = $CollisionShape2D
 
 var flow_controller: Node
+var _tooltip_label: Label = null
+var _tooltip_panel: Panel = null
+var _is_hovered: bool = false
 
 func _ready():
 	input_pickable = true
@@ -17,6 +20,53 @@ func _ready():
 	# Gate state is synced via FlowController.toggle_gate() + gate_toggled signal
 
 	gate_toggled.connect(_on_gate_toggled, CONNECT_ONE_SHOT)
+	_setup_tooltip()
+
+	# Use built-in mouse signals from Area2D/StaticBody2D for hover detection
+	mouse_entered.connect(_on_gate_mouse_entered)
+	mouse_exited.connect(_on_gate_mouse_exited)
+
+func _setup_tooltip():
+	# Build a small floating panel + label showing which molds the gate feeds
+	_tooltip_panel = Panel.new()
+	_tooltip_panel.name = "TooltipPanel"
+	_tooltip_panel.z_index = 200
+	# Stylebox for dark background
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.15, 0.92)
+	style.set_corner_radius_all(4)
+	style.set_content_margin_all(4)
+	_tooltip_panel.add_theme_stylebox_override("panel", style)
+	add_child(_tooltip_panel)
+
+	_tooltip_label = Label.new()
+	_tooltip_label.name = "TooltipLabel"
+	_tooltip_label.text = _get_tooltip_text()
+	_tooltip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tooltip_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_tooltip_panel.add_child(_tooltip_label)
+
+	_tooltip_panel.hide()
+
+func _get_tooltip_text() -> String:
+	# Show which mold(s) this gate feeds based on GATE_ROUTING
+	var intake_to_mold = {
+		"intake_a": "Blade",
+		"intake_b": "Guard",
+		"intake_c": "Grip"
+	}
+	var flow_ctrl = get_node_or_null("/root/FlowController")
+	if not flow_ctrl:
+		return gate_id
+	var intakes = flow_ctrl.GATE_ROUTING.get(gate_id, [])
+	if intakes.is_empty():
+		return gate_id
+	var parts: Array[String] = []
+	for intake in intakes:
+		var mold = intake_to_mold.get(intake, intake)
+		if not parts.has(mold):
+			parts.append(mold)
+	return "→ " + " + ".join(parts)
 
 func toggle():
 	is_open = not is_open
@@ -34,8 +84,10 @@ func _on_gate_toggled(p_gate_id: String, open: bool):
 
 func _update_visual():
 	if visual:
-		# Stop any running tweens to prevent conflicts
-		visual.remove_meta("_tween")
+		# Kill any running previous tween to prevent conflicts on rapid toggles
+		if visual.has_meta("_tween"):
+			visual.get_meta("_tween").kill()
+			visual.remove_meta("_tween")
 
 		# Animated tween: elastic ease rotation + color fade white<->green
 		var tween = visual.create_tween()
@@ -77,3 +129,25 @@ func _input(event: InputEvent):
 			if gate_rect.has_point(world_pos):
 				toggle()
 				gate_interacted.emit(gate_id)
+
+func _on_gate_mouse_entered():
+	_show_tooltip()
+
+func _on_gate_mouse_exited():
+	_hide_tooltip()
+
+func _show_tooltip():
+	if not _tooltip_panel or _tooltip_panel.visible:
+		return
+	# Refresh text in case gate routing changed
+	_tooltip_label.text = _get_tooltip_text()
+	# Size panel to fit text (Godot 4: Label sizes itself based on container)
+	_tooltip_label.size = Vector2(80, 20)
+	_tooltip_panel.size = Vector2(88, 26)
+	# Position above the gate
+	_tooltip_panel.position = Vector2(-44, -70)
+	_tooltip_panel.show()
+
+func _hide_tooltip():
+	if _tooltip_panel:
+		_tooltip_panel.hide()

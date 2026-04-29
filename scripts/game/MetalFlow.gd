@@ -2,6 +2,7 @@ extends Node
 
 signal metal_poured(metal_id: String, world_position: Vector2, amount: float)
 signal waste_routed(metal_id: String, world_position: Vector2, amount: float)
+signal pour_routing_decided(world_position: Vector2, mold_id: String)  # emitted when routing target is resolved
 
 var active_pour_zone: Node = null
 var metal_source: Node
@@ -50,18 +51,29 @@ func flush_accumulator(metal_id: String, pour_origin: Vector2):
 
 func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 	_last_pour_metal = metal_id
+	# ── Routing Design Note ──────────────────────────────────────────────────
+	# pour_pos is the HOLD position (mouse release point), NOT the live drag
+	# position. The player releases at the X-coordinate of the mold they want
+	# to fill; that X is converted to an intake via _intake_for_x_offset().
+	# Gate state is checked by FlowController.get_mold_for_pour_position() —
+	# if no open gate covers the targeted intake the pour is marked waste.
+	# This is intentional: HOLD = commit to a mold, drag = sweep region.
+	# ─────────────────────────────────────────────────────────────────────────
 	# Ask FlowController which mold to route to, given pour position and gate state.
 	# Uses get_mold_for_pour_position() exclusively — no has_method fallback.
 	if flow_controller and flow_controller.has_method("get_mold_for_pour_position"):
 		var result = flow_controller.get_mold_for_pour_position(pour_pos)
 		if result.mold_id != "":
+			pour_routing_decided.emit(pour_pos, result.mold_id)
 			flow_controller.route_metal_to_mold(result.intake_id, result.mold_id, metal_id, amount)
 			metal_poured.emit(metal_id, pour_pos, amount)
 		elif result.intake_id != "":
 			# Intake exists but is blocked by gates — route to fallback
+			pour_routing_decided.emit(pour_pos, "")
 			_route_fallback(metal_id, pour_pos, amount)
 		else:
 			# No intake reachable — full waste
+			pour_routing_decided.emit(pour_pos, "")
 			if score_manager:
 				score_manager.add_waste(amount)
 			waste_routed.emit(metal_id, pour_pos, amount)

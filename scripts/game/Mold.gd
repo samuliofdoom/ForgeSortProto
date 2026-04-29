@@ -23,6 +23,7 @@ var is_locked: bool = false  # true between order complete and next order starti
 var mold_state: MoldState = MoldState.IDLE
 
 var _hardening_timer: Timer = null
+var _display_tween: Tween = null  # kills previous before creating new to prevent tween accumulation
 
 @onready var fill_bar: ProgressBar = $FillBar
 @onready var state_label: Label = $StateLabel
@@ -125,13 +126,10 @@ func receive_metal(metal_id: String, amount: float, penalize: bool = true):
 		_trigger_complete()
 
 func _trigger_contamination(wrong_metal: String, amount: float):
-	print("[MOLD] _trigger_contamination INCOMING: wrong_metal=", wrong_metal, " amount=", amount)
-	print("[MOLD]   score_manager=", score_manager, " contamination_count BEFORE=", score_manager.contamination_count)
 	is_contaminated = true
 	current_metal = wrong_metal
 	mold_state = MoldState.CONTAMINATED
 	score_manager.add_contamination()
-	print("[MOLD]   contamination_count AFTER=", score_manager.contamination_count)
 	score_manager.add_waste(amount)
 	_update_display()
 	mold_contaminated.emit(mold_id)
@@ -220,8 +218,11 @@ func _on_order_started(new_order: OrderDefinition):
 func _update_display():
 	if fill_bar:
 		var target_val = get_fill_percent() * 100
-		var tween = create_tween()
-		tween.tween_property(fill_bar, "value", target_val, 0.25)
+		# Kill existing tween before creating new to prevent accumulation during rapid fills
+		if _display_tween:
+			_display_tween.kill()
+		_display_tween = create_tween()
+		_display_tween.tween_property(fill_bar, "value", target_val, 0.25)
 		if mold_state == MoldState.HARDENING:
 			fill_bar.modulate = Color.ORANGE
 		elif is_contaminated:

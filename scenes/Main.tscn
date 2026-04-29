@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/GameController.gd" id="1_controller"]
 [ext_resource type="Script" path="res://scripts/game/PourZone.gd" id="2_pourzone"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://scripts/ui/GateToggleUI.gd" id="13_gatetoggleui"]
 [ext_resource type="Script" path="res://scripts/ui/SpeedTimer.gd" id="14_speedtimer"]
 [ext_resource type="Script" path="res://scripts/ui/GateDebugHUD.gd" id="15_gatedebughud"]
+[ext_resource type="Script" path="res://scripts/ui/OrderChecklistUI.gd" id="16_orderchecklist"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_intake"]
 size = Vector2(40, 30)
@@ -522,6 +523,35 @@ offset_bottom = 50.0
 text = "Grip"
 horizontal_alignment = 1
 
+[node name="ForgeAtmosphere" type="GPUParticles2D" parent="MoldArea"]
+position = Vector2(0, -20)
+z_index = -50
+emitting = true
+amount = 30
+lifetime = 2.5
+one_shot = false
+speed_scale = 0.8
+explosiveness = 0.1
+randomness = 0.5
+lifetime_randomness = 0.3
+draw_order = 1
+spread = 80.0
+gravity = Vector2(0, -60)
+initial_velocity_min = 20.0
+initial_velocity_max = 60.0
+angular_velocity_min = -50.0
+angular_velocity_max = 50.0
+linear_accel_min = -10.0
+linear_accel_max = 10.0
+color = Color(1.0, 0.45, 0.1, 0.6)
+hue_variation_min = -0.1
+hue_variation_max = 0.1
+anim_speed_min = 0.5
+anim_speed_max = 1.0
+anim_offset_max = 1.0
+scale_amount_min = 1.5
+scale_amount_max = 4.0
+
 [node name="OrderPanel" type="Control" parent="UI"]
 layout_mode = 1
 anchors_preset = 12
@@ -624,3 +654,25 @@ text = "Start Game"
 
 [node name="GateDebugHUD" type="CanvasLayer" parent="."]
 script = ExtResource("15_gatedebughud")
+
+[node name="OrderChecklistUI" type="Control" parent="UI"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 10.0
+offset_top = 210.0
+offset_right = 200.0
+offset_bottom = 350.0
+script = ExtResource("16_orderchecklist")
+
+[node name="TitleLabel" type="Label" parent="UI/OrderChecklistUI"]
+layout_mode = 1
+offset_right = 190.0
+offset_bottom = 25.0
+text = "Parts Needed:"
+
+[node name="ChecklistContainer" type="VBoxContainer" parent="UI/OrderChecklistUI"]
+layout_mode = 1
+anchors_preset = 0
+offset_top = 30.0
+offset_right = 190.0
+offset_bottom = 130.0

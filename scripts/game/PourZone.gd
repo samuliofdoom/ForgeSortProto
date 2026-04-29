@@ -11,6 +11,7 @@ signal pour_ended()
 
 var is_pouring: bool = false
 var pour_origin: Vector2 = Vector2.ZERO
+var target_mold: Node = null  # set by MetalFlow when routing determines target mold
 var metal_source: Node
 var metal_flow: Node
 
@@ -23,6 +24,7 @@ var _active_metal: String = "iron"
 var _last_pour_metal: String = "iron"  # tracks metal type at pour start for accumulator flush on gate toggle
 var _screen_height: float = 720.0
 var _pour_zone_bg: ColorRect  # scene reference for pulsing border effect
+var _pulsing_tween: Tween = null  # stored to prevent accumulation on re-call
 
 # Dynamic pour params driven by metal definition
 var _current_stream_width: float = 8.0
@@ -36,6 +38,7 @@ func _ready():
 		flow_controller.gate_toggled.connect(_on_gate_toggled)
 	if metal_flow:
 		metal_flow.waste_routed.connect(_on_waste_routed)
+		metal_flow.pour_routing_decided.connect(_on_pour_routing_decided)
 	_setup_visuals()
 
 func _setup_visuals():
@@ -72,10 +75,13 @@ func _setup_visuals():
 		metal_source.metal_selected.connect(_on_metal_selected)
 
 func _setup_pulsing_border():
-	# Start pulsing border animation loop
-	var tween = create_tween().set_loops()
-	tween.tween_property(_pour_zone_bg, "modulate:a", 0.5, 1.0)
-	tween.tween_property(_pour_zone_bg, "modulate:a", 0.2, 1.0)
+	# Kill existing tween before creating a new one to prevent accumulation
+	if _pulsing_tween:
+		_pulsing_tween.kill()
+		_pulsing_tween = null
+	_pulsing_tween = create_tween().set_loops()
+	_pulsing_tween.tween_property(_pour_zone_bg, "modulate:a", 0.5, 1.0)
+	_pulsing_tween.tween_property(_pour_zone_bg, "modulate:a", 0.2, 1.0)
 
 func _apply_metal_properties():
 	# Read metal definition to update pour feel
@@ -107,19 +113,23 @@ func _update_stream_visuals():
 	if not _stream_line:
 		return
 
-	# Stream from top of playfield down to pour point
-	var top_y = 0.0  # top of window
+	# Stream from furnace top down to target mold (if known), else pour_origin
+	var top_y = 0.0  # furnace top
 	var top_pos = Vector2(pour_origin.x, top_y)
-	var bottom_pos = pour_origin
+	var end_pos: Vector2
+	if target_mold and is_instance_valid(target_mold):
+		end_pos = target_mold.global_position
+	else:
+		end_pos = pour_origin
 
 	_stream_line.clear_points()
 	_stream_line.add_point(top_pos)
-	_stream_line.add_point(bottom_pos)
+	_stream_line.add_point(end_pos)
 	_stream_line.default_color = _get_metal_color(_active_metal)
 	_stream_line.width = _current_stream_width
 
-	# Glow follows pour point - use separate glow color for bloom effect
-	_glow_rect.global_position = pour_origin + Vector2(-_current_stream_width * 1.5, -_current_stream_width * 1.5)
+	# Glow follows the end of the stream (mold position)
+	_glow_rect.global_position = end_pos + Vector2(-_current_stream_width * 1.5, -_current_stream_width * 1.5)
 	_glow_rect.color = _get_metal_glow_color(_active_metal)
 	_glow_rect.size = Vector2(_current_stream_width * 3, _current_stream_width * 3)
 
@@ -230,6 +240,19 @@ func _on_gate_toggled(_gate_id: String, _state: bool):
 		if metal_source:
 			metal_source.stop_pour()
 		pour_ended.emit()
+
+func _on_pour_routing_decided(_world_pos: Vector2, mold_id: String):
+	# Resolve mold node from the routing decision so the stream Line2D
+	# can draw from furnace to the actual target mold.
+	if mold_id == "":
+		target_mold = null
+		return
+	# Mold nodes are named BladeMold/GuardMold/GripMold; mold_id is "blade"/"guard"/"grip"
+	var mold_area = get_node_or_null("/root/Main/MoldArea")
+	if mold_area:
+		# Capitalize mold_id to match node naming convention
+		var mold_name = mold_id.capitalize().replace(" ", "") + "Mold"
+		target_mold = mold_area.get_node_or_null(mold_name)
 
 func _on_metal_selected(metal_id: String):
 	_active_metal = metal_id

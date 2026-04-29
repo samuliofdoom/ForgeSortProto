@@ -42,6 +42,11 @@ metal_cycle={
 [physics]
 
 3d/physics_engine="Jolt Physics"
+common/physics_interations_per_frame=100
+
+[physics_2d]
+
+common/physics_interations_per_frame=100
 
 [rendering]
 
