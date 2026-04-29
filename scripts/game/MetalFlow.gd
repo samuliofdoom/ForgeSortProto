@@ -5,10 +5,8 @@ signal waste_routed(metal_id: String, world_position: Vector2, amount: float)
 
 var active_pour_zone: Node = null
 var metal_source: Node
-var game_data: Node
 var flow_controller: Node
 var score_manager: Node
-var game_controller: Node
 var molds: Dictionary = {}
 
 var pour_accumulator: float = 0.0
@@ -17,13 +15,8 @@ const BASE_POUR_AMOUNT_PER_SECOND: float = 50.0
 
 func _ready():
 	metal_source = get_node("/root/MetalSource")
-	# Note: metal_poured signal is emitted by _process for audio/particle/analytics
-	# listeners. Connect a real handler here when those systems are added.
-	pass
-	game_data = get_node("/root/GameData")
 	flow_controller = get_node("/root/FlowController")
 	score_manager = get_node("/root/ScoreManager")
-	game_controller = get_node_or_null("/root/GameController")
 
 func _process(delta):
 	if active_pour_zone and active_pour_zone.is_pouring:
@@ -57,14 +50,15 @@ func flush_accumulator(metal_id: String, pour_origin: Vector2):
 
 func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 	_last_pour_metal = metal_id
-	# Ask FlowController which mold to route to, given pour position and gate state
+	# Ask FlowController which mold to route to, given pour position and gate state.
+	# Uses get_mold_for_pour_position() exclusively — no has_method fallback.
 	if flow_controller and flow_controller.has_method("get_mold_for_pour_position"):
 		var result = flow_controller.get_mold_for_pour_position(pour_pos)
 		if result.mold_id != "":
 			flow_controller.route_metal_to_mold(result.intake_id, result.mold_id, metal_id, amount)
 			metal_poured.emit(metal_id, pour_pos, amount)
 		elif result.intake_id != "":
-			# Intake blocked by gates — route to fallback
+			# Intake exists but is blocked by gates — route to fallback
 			_route_fallback(metal_id, pour_pos, amount)
 		else:
 			# No intake reachable — full waste
@@ -72,31 +66,10 @@ func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 				score_manager.add_waste(amount)
 			waste_routed.emit(metal_id, pour_pos, amount)
 	else:
-		# Fallback: use position-based routing (original behavior when FlowController lacks new API)
-		var intake_id = _get_intake_for_position(pour_pos)
-		if intake_id != "":
-			var target_mold = flow_controller.get_mold_for_intake(intake_id) if flow_controller else ""
-			if target_mold != "":
-				flow_controller.route_metal_to_mold(intake_id, target_mold, metal_id, amount)
-			else:
-				_route_fallback(metal_id, pour_pos, amount)
-		else:
-			_route_fallback(metal_id, pour_pos, amount)
+		# No get_mold_for_pour_position — fallback to nearest mold
+		_route_fallback(metal_id, pour_pos, amount)
 
-func _get_intake_for_position(pour_pos: Vector2) -> String:
-	var mold_area = game_controller.get_mold_area() if game_controller else null
-	if not mold_area:
-		return ""
 
-	var mold_center_x = mold_area.global_position.x
-	var offset_x = pour_pos.x - mold_center_x
-
-	if offset_x < -60:
-		return "intake_a"
-	elif offset_x < 60:
-		return "intake_b"
-	else:
-		return "intake_c"
 
 func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float, penalize: bool = true):
 	var nearest_mold_id = ""
@@ -112,6 +85,7 @@ func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float, penaliz
 	if nearest_mold_id and molds[nearest_mold_id]:
 		# Fallback routing delivers metal to nearest mold (correct behavior.)
 		# waste_routed.emit() fires for visual feedback only — no score penalty.
-		# penalize controls whether receive_metal applies waste penalty (false from flush_accumulator).
+		# receive_metal applies waste penalty internally via its penalize param
+		# (false from flush_accumulator, true from normal _route_pour intake-blocked path).
 		waste_routed.emit(metal_id, pour_pos, amount)
 		molds[nearest_mold_id].receive_metal(metal_id, amount, penalize)

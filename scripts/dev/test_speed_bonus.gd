@@ -26,8 +26,9 @@ func _init():
 	print("\n[Test 1] Fast order (< 30s elapsed) → speed bonus +50")
 	score_manager.reset()
 
-	# Manually set start_time to NOW so elapsed ≈ 0
-	score_manager.start_time = Time.get_ticks_msec()
+	# Manually set order_start_time to NOW so elapsed ≈ 0
+	# (calculate_order_score uses order_start_time, NOT start_time)
+	score_manager.order_start_time = Time.get_ticks_msec()
 
 	var earned: int = score_manager.calculate_order_score(order)
 	print("  elapsed ≈ 0s, base=%d, speed_bonus=50 → earned=%d" % [order.base_value, earned])
@@ -41,8 +42,8 @@ func _init():
 	print("\n[Test 2] Slow order (> 30s elapsed) → no speed bonus")
 	score_manager.reset()
 
-	# Simulate 35 seconds elapsed
-	score_manager.start_time = Time.get_ticks_msec() - 35000
+	# Simulate 35 seconds elapsed on this order
+	score_manager.order_start_time = Time.get_ticks_msec() - 35000
 
 	earned = score_manager.calculate_order_score(order)
 	print("  elapsed ≈ 35s, base=%d → earned=%d" % [order.base_value, earned])
@@ -52,21 +53,21 @@ func _init():
 	else:
 		print("  PASS")
 
-	# ── Test 3: start_time resets on score_manager.reset() ─────────────────
-	print("\n[Test 3] start_time resets on score_manager.reset()")
+	# ── Test 3: order_start_time resets on score_manager.reset() ─────────────────
+	print("\n[Test 3] order_start_time resets on score_manager.reset()")
 	score_manager.reset()
 
 	# Advance by 20 seconds then reset again
-	score_manager.start_time = Time.get_ticks_msec() - 20000
-	var before: int = score_manager.start_time
+	score_manager.order_start_time = Time.get_ticks_msec() - 20000
+	var before: int = score_manager.order_start_time
 
 	score_manager.reset()
-	var after: int = score_manager.start_time
+	var after: int = score_manager.order_start_time
 
 	var elapsed_after_reset: float = (Time.get_ticks_msec() - after) / 1000.0
-	print("  start_time before reset = %d, after = %d, elapsed=%.1fs" % [before, after, elapsed_after_reset])
+	print("  order_start_time before reset = %d, after = %d, elapsed=%.1fs" % [before, after, elapsed_after_reset])
 	if elapsed_after_reset > 1.0:
-		print("  FAIL: start_time should be reset to now (elapsed should be < 1s)")
+		print("  FAIL: order_start_time should be reset to now (elapsed should be < 1s)")
 		failures += 1
 	else:
 		print("  PASS")

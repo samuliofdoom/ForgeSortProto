@@ -16,11 +16,12 @@ var _last_waste_value: float = 0.0
 
 func _on_waste_updated(_waste_amount: float):
 	_update_display()
-	# Show floating waste label when waste increases
+	# Show floating waste label only when waste actually increases (ignore 0-delta and initial 0.0)
 	var prev = _last_waste_value
 	_last_waste_value = _waste_amount
-	if _waste_amount > prev:
-		_show_waste_floating_label(_waste_amount - prev)
+	var delta = _waste_amount - prev
+	if delta > 0.0:
+		_show_waste_floating_label(delta)
 
 func _show_waste_floating_label(amount: float):
 	var label = Label.new()

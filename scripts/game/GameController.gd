@@ -43,8 +43,9 @@ func _on_game_completed(_results: Dictionary):
 		start_button.show()
 
 func _on_game_over(_final_score: int, _waste_percent: float):
-	start_button.show()
-	# TODO: show a dedicated game-over panel with final_score
+	if result_panel:
+		result_panel.show()
+	start_button.hide()
 
 func _on_order_started(order: OrderDefinition):
 	_update_mold_requirements_for_order(order)

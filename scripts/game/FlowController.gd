@@ -56,16 +56,42 @@ func get_gate_state(gate_id: String) -> bool:
 	return gate_states.get(gate_id, false)
 
 func get_mold_for_intake(intake_id: String) -> String:
-	# BUG-018 fix: first, check if any open gate covers intake_id directly.
-	# If so, route to that intake's mold — no collecting from other gates.
+	# Returns the mold_id for a given intake, checking gate routing first.
+	# Gate routing takes priority — if a gate covers this intake, metal routes
+	# there directly (no collecting from other gates).
+	var routed = _gate_routing_mold_id(intake_id)
+	if routed != "":
+		return routed
+	# No gate covers this intake — warn and return empty
+	push_warning("FlowController: intake '%s' has no open gate covering it; metal will not route" % intake_id)
+	return ""
+
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+# Maps world-position offset (relative to mold center) to an intake id.
+func _intake_for_x_offset(offset_x: float) -> String:
+	if offset_x < -60.0:
+		return "intake_a"
+	elif offset_x < 60.0:
+		return "intake_b"
+	else:
+		return "intake_c"
+
+
+# Direct INTAKE_TO_MOLD lookup — no gate check.
+func _mold_id_for_intake(intake_id: String) -> String:
+	return INTAKE_TO_MOLD.get(intake_id, "")
+
+
+# Iterates open gates in priority order; returns mold_id if any gate covers
+# intake_id. Returns "" when no open gate covers the intake.
+func _gate_routing_mold_id(intake_id: String) -> String:
 	for gate_id in GATE_ROUTING.keys():
 		if get_gate_state(gate_id):
 			var gated_intakes = GATE_ROUTING[gate_id]
 			if intake_id in gated_intakes:
-				return INTAKE_TO_MOLD.get(intake_id, "")
-
-	# No gate covers this intake — metal cannot be routed; warn and return empty
-	push_warning("FlowController: intake '%s' has no open gate covering it; metal will not route" % intake_id)
+				return _mold_id_for_intake(intake_id)
 	return ""
 
 func route_metal_to_mold(intake_id: String, mold_id: String, metal_id: String, amount: float):
@@ -98,28 +124,13 @@ func get_mold_for_pour_position(world_position: Vector2) -> Dictionary:
 	if not mold_area:
 		return {"mold_id": "", "intake_id": ""}
 
-	var mold_center_x = mold_area.global_position.x
-	var offset_x = world_position.x - mold_center_x
+	var offset_x = world_position.x - mold_area.global_position.x
+	var pour_intake = _intake_for_x_offset(offset_x)
 
-	var pour_intake = ""
-	if offset_x < -60:
-		pour_intake = "intake_a"
-	elif offset_x < 60:
-		pour_intake = "intake_b"
-	else:
-		pour_intake = "intake_c"
-
-	# Check which open gates cover this intake
-	# NEW-001 fix: use pour_intake directly, not active_gates[0].
-	# This fixes wrong-mold routing when multiple gates are open:
-	# with G1(A,B)+G2(B,C) both open, pouring at intake_b now correctly
-	# returns guard (mold for intake_b), not blade (mold for intake_a).
-	for gate_id in GATE_ROUTING.keys():
-		if get_gate_state(gate_id):
-			var gated_intakes = GATE_ROUTING[gate_id]
-			if pour_intake in gated_intakes:
-				var mold_id = INTAKE_TO_MOLD.get(pour_intake, "")
-				return {"mold_id": mold_id, "intake_id": ""}
+	# Check which open gate covers this intake
+	var mold_id = _gate_routing_mold_id(pour_intake)
+	if mold_id != "":
+		return {"mold_id": mold_id, "intake_id": ""}
 
 	# No open gate covers this intake — the pour is wasted (blocked intake)
 	if pour_intake != "":

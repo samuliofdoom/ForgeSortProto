@@ -39,10 +39,15 @@ var part_pop_effect: Node
 var _glow_active: bool = false
 
 func _ready():
-	order_manager = get_node("/root/OrderManager")
-	score_manager = get_node("/root/ScoreManager")
-	game_data = get_node("/root/GameData")
-	metal_flow = get_node("/root/MetalFlow")
+	# Allow test injection before add_child() — don't clobber if already set.
+	if not order_manager:
+		order_manager = get_node("/root/OrderManager")
+	if not score_manager:
+		score_manager = get_node("/root/ScoreManager")
+	if not game_data:
+		game_data = get_node("/root/GameData")
+	if not metal_flow:
+		metal_flow = get_node("/root/MetalFlow")
 	part_pop_effect = get_node_or_null("/root/Main/PartPopEffect")
 
 	if metal_flow and metal_flow.has_method("register_mold"):
@@ -120,10 +125,13 @@ func receive_metal(metal_id: String, amount: float, penalize: bool = true):
 		_trigger_complete()
 
 func _trigger_contamination(wrong_metal: String, amount: float):
+	print("[MOLD] _trigger_contamination INCOMING: wrong_metal=", wrong_metal, " amount=", amount)
+	print("[MOLD]   score_manager=", score_manager, " contamination_count BEFORE=", score_manager.contamination_count)
 	is_contaminated = true
 	current_metal = wrong_metal
 	mold_state = MoldState.CONTAMINATED
 	score_manager.add_contamination()
+	print("[MOLD]   contamination_count AFTER=", score_manager.contamination_count)
 	score_manager.add_waste(amount)
 	_update_display()
 	mold_contaminated.emit(mold_id)

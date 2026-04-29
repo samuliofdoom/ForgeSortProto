@@ -243,16 +243,18 @@ func _on_waste_routed(_metal_id: String, world_pos: Vector2, _amount: float):
 	_trigger_rejection_effect(world_pos)
 
 func _trigger_rejection_effect(world_pos: Vector2):
-	# Create a brief orange flash indicator at the rejection point
+	# Create a brief orange flash indicator at the rejection point.
+	# world_pos is in world-space; flash.position is in PourZone's local space,
+	# so convert by subtracting PourZone's world origin.
 	var flash = ColorRect.new()
 	flash.name = "RejectionFlash"
 	flash.color = Color.ORANGE * 0.7
 	flash.size = Vector2(20, 20)
-	flash.position = world_pos - Vector2(10, 10)
+	flash.position = world_pos - global_position - Vector2(10, 10)
 	flash.z_index = 100
 	add_child(flash)
 
-	# Shake effect
+	# Shake effect: fade out + expand over 0.5s
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(flash, "modulate:a", 0.0, 0.5)
