@@ -167,6 +167,20 @@ offset_bottom = 0.0
 text = "Score: 0"
 horizontal_alignment = 2
 
+[node name="SpeedTimer" type="Label" parent="UI/TopBar"]
+anchors_preset = 2
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -30.0
+offset_top = -40.0
+offset_right = 30.0
+offset_bottom = 0.0
+text = "0.0s"
+horizontal_alignment = 1
+script = ExtResource("14_speedtimer")
+
 [node name="WasteMeter" type="Control" parent="UI"]
 layout_mode = 1
 anchors_preset = 0
@@ -241,6 +255,42 @@ offset_right = 175.0
 offset_bottom = 55.0
 toggle_mode = true
 text = "G4"
+
+[node name="Gate01Route" type="Label" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 56.0
+offset_right = 40.0
+offset_bottom = 70.0
+text = "A/B"
+horizontal_alignment = 1
+
+[node name="Gate02Route" type="Label" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_left = 45.0
+offset_top = 56.0
+offset_right = 85.0
+offset_bottom = 70.0
+text = "B/C"
+horizontal_alignment = 1
+
+[node name="Gate03Route" type="Label" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_left = 90.0
+offset_top = 56.0
+offset_right = 130.0
+offset_bottom = 70.0
+text = "A+C"
+horizontal_alignment = 1
+
+[node name="Gate04Route" type="Label" parent="UI/GateToggleUI"]
+layout_mode = 0
+offset_left = 135.0
+offset_top = 56.0
+offset_right = 175.0
+offset_bottom = 70.0
+text = "C"
+horizontal_alignment = 1
 
 [node name="PourZone" type="Area2D" parent="."]
 position = Vector2(200, 150)

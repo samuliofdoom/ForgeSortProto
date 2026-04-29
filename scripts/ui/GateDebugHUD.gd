@@ -1,6 +1,6 @@
 ## GateDebugHUD — ForgeSortProto Debug Overlay
 ## Shows live gate/open intake state for playtesting.
-## Toggle visibility: F1 key (editor/debug) or set `visible = true/false` programmatically.
+## Toggle visibility: F3 key (editor/debug) or set `visible = true/false` programmatically.
 
 extends CanvasLayer
 
@@ -52,7 +52,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
-			KEY_F1:
+			KEY_F3:
 				visible = not visible
 				if visible:
 					_refresh()
@@ -75,7 +75,7 @@ func _build_ui() -> void:
 
 	# Title row
 	var title := Label.new()
-	title.text = "GATE DEBUG  [F1]"
+	title.text = "GATE DEBUG  [F3]"
 	title.add_theme_font_size_override("font_size", 10)
 	title.modulate = Color(0.7, 0.7, 0.7)
 	_panel.add_child(title)

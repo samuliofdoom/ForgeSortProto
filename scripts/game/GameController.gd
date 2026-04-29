@@ -103,3 +103,13 @@ func _input(event):
 			get_tree().quit()
 		if event.pressed and event.keycode == KEY_SPACE and start_button.visible:
 			_on_start_pressed()
+
+var _furnace_pulse_time: float = 0.0
+
+func _process(delta):
+	# Animate furnace glow pulse
+	var furnace_glow = get_node_or_null("FurnaceGlow/GlowGradient")
+	if furnace_glow:
+		_furnace_pulse_time += delta * 0.8  # ~2.5s cycle
+		var pulse = (sin(_furnace_pulse_time) + 1.0) * 0.2 + 0.4  # range 0.4-0.8
+		furnace_glow.modulate.a = pulse

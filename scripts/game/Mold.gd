@@ -7,6 +7,8 @@ signal mold_completed(mold_id: String)
 signal mold_cleared(mold_id: String)
 signal mold_tapped(mold_id: String)
 
+enum MoldState { IDLE, FILLING, COMPLETE, HARDENING, CONTAMINATED, LOCKED }
+
 @export var mold_id: String = "blade"
 @export var part_type: String = "blade"
 @export var required_metal: String = "iron"
@@ -18,16 +20,23 @@ var is_complete: bool = false
 var current_metal: String = ""
 var is_filling: bool = false
 var is_locked: bool = false  # true between order complete and next order starting
+var mold_state: MoldState = MoldState.IDLE
+
+var _hardening_timer: Timer = null
 
 @onready var fill_bar: ProgressBar = $FillBar
 @onready var state_label: Label = $StateLabel
 @onready var mold_sprite: ColorRect = $MoldSprite
+var mold_glow: ColorRect  # nullable - created programmatically if not in scene
+var padlock: Node = null  # programmatic padlock icon for locked state
+var _padlock_pulse_tween: Tween = null
 
 var order_manager: Node
 var score_manager: Node
 var game_data: Node
 var metal_flow: Node
 var part_pop_effect: Node
+var _glow_active: bool = false
 
 func _ready():
 	order_manager = get_node("/root/OrderManager")
@@ -42,6 +51,8 @@ func _ready():
 		order_manager.order_completed.connect(_on_order_completed)
 		order_manager.order_started.connect(_on_order_started)
 
+	# Create programmatic padlock icon (hidden by default)
+	_create_padlock_icon()
 	_update_display()
 
 func _input(event):
@@ -64,6 +75,10 @@ func _on_mold_tapped():
 
 func receive_metal(metal_id: String, amount: float):
 	if is_locked:
+		score_manager.add_waste(amount)
+		return
+
+	if mold_state == MoldState.HARDENING:
 		score_manager.add_waste(amount)
 		return
 
@@ -91,6 +106,7 @@ func receive_metal(metal_id: String, amount: float):
 		return
 
 	is_filling = true
+	mold_state = MoldState.FILLING
 	current_fill += amount
 	_create_receiving_glow(metal_id)
 	_update_display()
@@ -102,6 +118,7 @@ func receive_metal(metal_id: String, amount: float):
 func _trigger_contamination(wrong_metal: String, amount: float):
 	is_contaminated = true
 	current_metal = wrong_metal
+	mold_state = MoldState.CONTAMINATED
 	score_manager.add_contamination()
 	score_manager.add_waste(amount)
 	_update_display()
@@ -111,10 +128,26 @@ func _trigger_contamination(wrong_metal: String, amount: float):
 func _trigger_complete():
 	is_complete = true
 	is_filling = false
+	mold_state = MoldState.HARDENING
 	_update_display()
+	# Emit mold_completed at START of hardening so order knows part is coming
 	mold_completed.emit(mold_id)
+	_animate_hardening()
+	_start_hardening_timer()
+	# Do NOT call _produce_part() here — that happens after hardening
+
+func _start_hardening_timer():
+	_hardening_timer = Timer.new()
+	_hardening_timer.wait_time = 2.0
+	_hardening_timer.one_shot = true
+	_hardening_timer.timeout.connect(_on_hardening_complete)
+	add_child(_hardening_timer)
+	_hardening_timer.start()
+
+func _on_hardening_complete():
+	mold_state = MoldState.COMPLETE
 	_produce_part()
-	_create_complete_effect()
+	_animate_complete_settle()
 
 func _produce_part():
 	var metal_prefix = current_metal
@@ -126,11 +159,18 @@ func _produce_part():
 		part_pop_effect.spawn_part_pop(part_id, global_position)
 
 func clear_mold():
+	# Cancel any active hardening timer
+	if _hardening_timer:
+		_hardening_timer.stop()
+		_hardening_timer.queue_free()
+		_hardening_timer = null
+
 	current_fill = 0.0
 	is_contaminated = false
 	is_complete = false
 	current_metal = ""
 	is_filling = false
+	mold_state = MoldState.IDLE
 	_update_display()
 	mold_cleared.emit(mold_id)
 	_create_clear_effect()
@@ -148,9 +188,16 @@ func _on_order_completed(_completed_order: OrderDefinition, _score: int):
 	is_locked = true
 
 func _on_order_started(new_order: OrderDefinition):
+	# Cancel any active hardening timer if order changes mid-hardening
+	if _hardening_timer:
+		_hardening_timer.stop()
+		_hardening_timer.queue_free()
+		_hardening_timer = null
+
 	if score_manager and score_manager.has_method("reset_order"):
 		score_manager.reset_order()
 	is_locked = false
+	mold_state = MoldState.IDLE
 	if is_complete or is_contaminated:
 		clear_mold()
 	if new_order.part_requests.has(part_type):
@@ -159,8 +206,12 @@ func _on_order_started(new_order: OrderDefinition):
 
 func _update_display():
 	if fill_bar:
-		fill_bar.value = get_fill_percent() * 100
-		if is_contaminated:
+		var target_val = get_fill_percent() * 100
+		var tween = create_tween()
+		tween.tween_property(fill_bar, "value", target_val, 0.25)
+		if mold_state == MoldState.HARDENING:
+			fill_bar.modulate = Color.ORANGE
+		elif is_contaminated:
 			fill_bar.modulate = Color.RED
 		elif is_complete:
 			fill_bar.modulate = Color.GREEN
@@ -170,7 +221,9 @@ func _update_display():
 			fill_bar.modulate = Color.WHITE
 
 	if mold_sprite:
-		if is_contaminated:
+		if mold_state == MoldState.HARDENING:
+			mold_sprite.modulate = Color(0.5, 0.55, 0.6)
+		elif is_contaminated:
 			mold_sprite.modulate = Color.RED * 0.5
 		elif is_complete:
 			mold_sprite.modulate = Color.GREEN * 0.5
@@ -180,9 +233,14 @@ func _update_display():
 			mold_sprite.modulate = Color.DIM_GRAY * 0.5
 		else:
 			mold_sprite.modulate = Color.WHITE
+		# Apply ambient glow when filling - brighter glow based on fill amount
+		_update_fill_glow()
 
 	if state_label:
-		if is_complete:
+		if mold_state == MoldState.HARDENING:
+			state_label.text = "Cooling..."
+			state_label.modulate = Color.ORANGE
+		elif is_complete:
 			state_label.text = "Done!"
 			state_label.modulate = Color.GREEN
 		elif is_contaminated:
@@ -198,8 +256,105 @@ func _update_display():
 			state_label.text = required_metal.capitalize()
 			state_label.modulate = Color.WHITE
 
+	_update_padlock_visibility()
+
+func _update_fill_glow():
+	# Add ambient glow to mold sprite based on fill state
+	# When filling: increase brightness proportional to fill amount
+	# When complete/hardening: dim glow
+	if mold_state == MoldState.FILLING:
+		var fill_pct = get_fill_percent()
+		# Subtle glow pulse animation
+		var pulse = (sin(Time.get_ticks_msec() * 0.005) + 1.0) * 0.15 + 0.85
+		mold_sprite.modulate.v = pulse  # brighten based on fill
+	elif mold_state == MoldState.HARDENING:
+		mold_sprite.modulate.v = 0.6  # dimmer during cooling
+	elif is_complete:
+		mold_sprite.modulate.v = 0.7  # finished glow
+	elif is_contaminated:
+		mold_sprite.modulate.v = 0.4  # dim contamination
+
 func _get_metal_color(metal_id: String) -> Color:
 	return MetalDefinition.get_color(metal_id)
+
+func _create_padlock_icon():
+	# Build a simple padlock from ColorRects: body + shackle arch
+	padlock = Node2D.new()
+	padlock.name = "Padlock"
+	padlock.z_index = 10
+	padlock.visible = false
+	add_child(padlock)
+
+	# Padlock body (rectangle)
+	var body = ColorRect.new()
+	body.name = "Body"
+	body.size = Vector2(16, 12)
+	body.position = Vector2(-8, -2)
+	body.color = Color(0.6, 0.6, 0.65)
+	body.anchor_left = 0.5
+	body.anchor_right = 0.5
+	body.anchor_top = 0.5
+	body.anchor_bottom = 0.5
+	padlock.add_child(body)
+
+	# Shackle (arch made of two vertical rects and a top bar)
+	var shackle_left = ColorRect.new()
+	shackle_left.name = "ShackleLeft"
+	shackle_left.size = Vector2(3, 10)
+	shackle_left.position = Vector2(-6, -12)
+	shackle_left.color = Color(0.6, 0.6, 0.65)
+	shackle_left.anchor_left = 0.5
+	shackle_left.anchor_right = 0.5
+	shackle_left.anchor_top = 0.5
+	shackle_left.anchor_bottom = 0.5
+	padlock.add_child(shackle_left)
+
+	var shackle_right = ColorRect.new()
+	shackle_right.name = "ShackleRight"
+	shackle_right.size = Vector2(3, 10)
+	shackle_right.position = Vector2(3, -12)
+	shackle_right.color = Color(0.6, 0.6, 0.65)
+	shackle_right.anchor_left = 0.5
+	shackle_right.anchor_right = 0.5
+	shackle_right.anchor_top = 0.5
+	shackle_right.anchor_bottom = 0.5
+	padlock.add_child(shackle_right)
+
+	var shackle_top = ColorRect.new()
+	shackle_top.name = "ShackleTop"
+	shackle_top.size = Vector2(12, 3)
+	shackle_top.position = Vector2(-6, -14)
+	shackle_top.color = Color(0.6, 0.6, 0.65)
+	shackle_top.anchor_left = 0.5
+	shackle_top.anchor_right = 0.5
+	shackle_top.anchor_top = 0.5
+	shackle_top.anchor_bottom = 0.5
+	padlock.add_child(shackle_top)
+
+func _update_padlock_visibility():
+	if not padlock:
+		return
+	var should_show = is_locked
+	if should_show and not padlock.visible:
+		padlock.visible = true
+		_start_padlock_pulse()
+	elif not should_show and padlock.visible:
+		_stop_padlock_pulse()
+		padlock.visible = false
+
+func _start_padlock_pulse():
+	if _padlock_pulse_tween:
+		_padlock_pulse_tween.kill()
+	_padlock_pulse_tween = create_tween()
+	_padlock_pulse_tween.set_parallel(true)
+	_padlock_pulse_tween.tween_property(padlock, "scale", Vector2(1.15, 1.15), 0.4).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	_padlock_pulse_tween.tween_property(padlock, "scale", Vector2(0.9, 0.9), 0.4).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE).from_current()
+	_padlock_pulse_tween.set_loops(-1)
+
+func _stop_padlock_pulse():
+	if _padlock_pulse_tween:
+		_padlock_pulse_tween.kill()
+		_padlock_pulse_tween = null
 
 func _create_contamination_effect():
 	if mold_sprite:
@@ -222,11 +377,43 @@ func _create_receiving_glow(metal_id: String):
 		tween.tween_property(mold_sprite, "modulate", color * 1.5, 0.1)
 		tween.tween_property(mold_sprite, "modulate", color * 0.7, 0.2)
 
+func _animate_hardening():
+	# Flash WHITE (0.1s) -> desaturate to gray-blue (0.3s) -> darken to cool steel (0.4s)
+	# Scale: slight shrink to 0.95 (0.2s, ease_in)
+	if mold_sprite:
+		var tween = create_tween()
+		tween.set_parallel(false)
+		# Flash white
+		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.1)
+		# Desaturate to gray-blue
+		tween.tween_property(mold_sprite, "modulate", Color(0.7, 0.72, 0.75), 0.3)
+		# Darken to final cooled color
+		tween.tween_property(mold_sprite, "modulate", Color(0.5, 0.55, 0.6), 0.4)
+		# Scale shrink with ease_in
+		var scale_tween = create_tween()
+		scale_tween.tween_property(mold_sprite, "scale", Vector2(0.95, 0.95), 0.2).set_ease(Tween.EASE_IN)
+
+func _animate_complete_settle():
+	# Scale back to 1.0 (0.2s, elastic ease)
+	# Label already set to "Done!" in green by _update_display
+	if mold_sprite:
+		var tween = create_tween()
+		tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+
 func _create_complete_effect():
 	if mold_sprite:
 		var tween = create_tween()
-		tween.tween_property(mold_sprite, "scale", Vector2(1.2, 1.2), 0.15)
-		tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.15)
+		tween.set_parallel(false)
+		# Chain: flash (0.1s) -> desaturate (0.2s) -> darken (0.3s) = 0.6s, then scale bounce
+		# Flash white
+		tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.1)
+		# Desaturate to gray-blue
+		tween.tween_property(mold_sprite, "modulate", Color(0.7, 0.72, 0.75), 0.2)
+		# Darken to cool steel
+		tween.tween_property(mold_sprite, "modulate", Color(0.5, 0.55, 0.6), 0.3)
+		# Scale bounce (0.2s) with elastic ease
+		tween.tween_property(mold_sprite, "scale", Vector2(1.2, 1.2), 0.15).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+		tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.15).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 
 func _create_clear_effect():
 	if mold_sprite:

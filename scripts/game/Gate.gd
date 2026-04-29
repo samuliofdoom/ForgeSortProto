@@ -14,8 +14,7 @@ var flow_controller: Node
 func _ready():
 	input_pickable = true
 	flow_controller = get_node_or_null("/root/FlowController")
-	if flow_controller and flow_controller.has_method("register_gate"):
-		flow_controller.register_gate(gate_id, self)
+	# Gate state is synced via FlowController.toggle_gate() + gate_toggled signal
 
 	gate_toggled.connect(_on_gate_toggled, CONNECT_ONE_SHOT)
 
@@ -35,12 +34,37 @@ func _on_gate_toggled(p_gate_id: String, open: bool):
 
 func _update_visual():
 	if visual:
+		# Stop any running tweens to prevent conflicts
+		visual.remove_meta("_tween")
+
+		# Animated tween: elastic ease rotation + color fade white<->green
+		var tween = visual.create_tween()
+		tween.set_parallel(true)
+
+		var target_rotation = PI / 4 if is_open else 0
+		var target_color = Color.GREEN * 0.8 if is_open else Color.WHITE * 0.8
+
+		tween.tween_property(visual, "rotation", target_rotation, 0.25)
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_ELASTIC)
+
+		tween.tween_property(visual, "modulate", target_color, 0.25)
+
+		visual.set_meta("_tween", tween)
+
+		# Add/remove glow light based on open state
 		if is_open:
-			visual.rotation = PI / 4
-			visual.modulate = Color.GREEN * 0.8
+			if not visual.has_node("GateLight"):
+				var light = PointLight2D.new()
+				light.name = "GateLight"
+				light.color = Color.GREEN
+				light.energy = 0.6
+				light.range = 80
+				light.height = 1.0
+				visual.add_child(light)
 		else:
-			visual.rotation = 0
-			visual.modulate = Color.WHITE * 0.8
+			if visual.has_node("GateLight"):
+				visual.get_node("GateLight").queue_free()
 
 func get_gate_id() -> String:
 	return gate_id

@@ -23,6 +23,7 @@ MetalSource="*res://scripts/game/MetalSource.gd"
 OrderManager="*res://scripts/game/OrderManager.gd"
 FlowController="*res://scripts/game/FlowController.gd"
 MetalFlow="*res://scripts/game/MetalFlow.gd"
+AudioManager="*res://scripts/ui/AudioManager.gd"
 
 [display]
 

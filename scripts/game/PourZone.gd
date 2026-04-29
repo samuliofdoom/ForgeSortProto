@@ -22,6 +22,7 @@ var _last_particle_time: float = 0.0
 var _active_metal: String = "iron"
 var _last_pour_metal: String = "iron"  # tracks metal type at pour start for accumulator flush on gate toggle
 var _screen_height: float = 720.0
+var _pour_zone_bg: ColorRect  # scene reference for pulsing border effect
 
 # Dynamic pour params driven by metal definition
 var _current_stream_width: float = 8.0
@@ -61,9 +62,20 @@ func _setup_visuals():
 	_particle_container.name = "ParticleContainer"
 	add_child(_particle_container)
 
+	# Get reference to PourZoneBG for pulsing border effect
+	_pour_zone_bg = get_node_or_null("PourZoneBG")
+	if _pour_zone_bg:
+		_setup_pulsing_border()
+
 	# Metal selection changes → update stream color and properties
 	if metal_source:
 		metal_source.metal_selected.connect(_on_metal_selected)
+
+func _setup_pulsing_border():
+	# Start pulsing border animation loop
+	var tween = create_tween().set_loops()
+	tween.tween_property(_pour_zone_bg, "modulate:a", 0.5, 1.0)
+	tween.tween_property(_pour_zone_bg, "modulate:a", 0.2, 1.0)
 
 func _apply_metal_properties():
 	# Read metal definition to update pour feel
