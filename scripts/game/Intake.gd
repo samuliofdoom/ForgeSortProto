@@ -71,9 +71,60 @@ func _trigger_intake_glow(metal_id: String):
 	var color = _get_metal_color(metal_id)
 	_glow_sprite.modulate = Color(color.r, color.g, color.b, 0.7)
 
-	# Flash and fade
+	# Secondary pulse: oscillate 0.7→0.4→0.7, then fade to 0 over 0.8s
 	_glow_tween = create_tween()
-	_glow_tween.tween_property(_glow_sprite, "modulate:a", 0.0, 0.4)
+	_glow_tween.set_parallel(true)
+	_glow_tween.tween_property(_glow_sprite, "modulate:a", 0.4, 0.15)
+	_glow_tween.tween_property(_glow_sprite, "modulate:a", 0.7, 0.15).set_delay(0.15)
+	_glow_tween.tween_property(_glow_sprite, "modulate:a", 0.0, 0.8).set_delay(0.3)
+
+	# Particle burst on metal entry
+	_spawn_particle_burst(color)
+
+func _spawn_particle_burst(color: Color):
+	var particles = CPUParticles2D.new()
+	particles.name = "IntakeParticles"
+	particles.emitting = true
+	particles.amount = 24
+	particles.lifetime = 0.5
+	particles.explosiveness = 0.9
+	particles.randomness = 0.3
+	particles.fraction_dead = 0.2
+	particles.one_shot = true
+	particles.speed_scale = 1.5
+	particles.direction = Vector2(0, -1)
+	particles.spread = 60.0
+	particles.flatness = 0.2
+	particles.initial_velocity_max = 120.0
+	particles.gravity = Vector2(0, 200)
+	particles.color = Color(color.r, color.g, color.b, 0.8)
+
+	var tex = _get_circle_texture()
+	if tex:
+		particles.texture = tex
+
+	particles.position = Vector2(0, 0)
+	add_child(particles)
+
+	# Destroy after burst completes
+	particles.finished.connect(_on_particles_finished.bind(particles))
+
+func _on_particles_finished(particles: CPUParticles2D):
+	if particles and is_instance_valid(particles):
+		particles.queue_free()
+
+func _get_circle_texture() -> Texture2D:
+	# Generate a simple circle texture for particles
+	var img = Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var center = Vector2(8, 8)
+	for y in range(16):
+		for x in range(16):
+			var pos = Vector2(x, y)
+			if pos.distance_to(center) <= 6:
+				img.set_pixel(x, y, Color(1, 1, 1, 1))
+	var tex = ImageTexture.create_from_image(img)
+	return tex
 
 func get_intake_id() -> String:
 	return intake_id
