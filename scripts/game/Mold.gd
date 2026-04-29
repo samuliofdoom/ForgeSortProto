@@ -128,6 +128,7 @@ func receive_metal(metal_id: String, amount: float, penalize: bool = true):
 	mold_state = MoldState.FILLING
 	current_fill += amount
 	_create_receiving_glow(metal_id)
+	_spawn_splatter_burst(metal_id)  # FEATURE-007: splatter burst on mold impact
 	_update_display()
 	mold_filled.emit(mold_id, get_fill_percent())
 
@@ -405,6 +406,56 @@ func _create_receiving_glow(metal_id: String):
 		_receiving_glow_tween = create_tween()
 		_receiving_glow_tween.tween_property(mold_sprite, "modulate", color * 1.5, 0.1)
 		_receiving_glow_tween.tween_property(mold_sprite, "modulate", color * 0.7, 0.2)
+
+func _spawn_splatter_burst(metal_id: String):
+	# FEATURE-007: particle burst at mold surface on metal impact
+	var splatter = CPUParticles2D.new()
+	splatter.name = "SplatterBurst"
+	splatter.emitting = true
+	splatter.amount = 16
+	splatter.lifetime = 0.4
+	splatter.explosiveness = 0.85
+	splatter.randomness = 0.4
+	splatter.fraction_dead = 0.1
+	splatter.one_shot = true
+	splatter.speed_scale = 1.2
+	# Burst upward/outward from mold surface
+	splatter.direction = Vector2(0, -1)
+	splatter.spread = 70.0
+	splatter.flatness = 0.3
+	splatter.initial_velocity_min = 60.0
+	splatter.initial_velocity_max = 140.0
+	splatter.gravity = Vector2(0, 300)
+	var metal_color = _get_metal_color(metal_id)
+	splatter.color = Color(metal_color.r, metal_color.g, metal_color.b, 0.85)
+
+	# Circle texture for particles
+	var tex = _get_circle_texture()
+	if tex:
+		splatter.texture = tex
+
+	splatter.position = Vector2(0, -20)
+	add_child(splatter)
+
+	# Destroy after burst completes
+	splatter.finished.connect(_on_splatter_finished.bind(splatter))
+
+func _on_splatter_finished(particles: CPUParticles2D):
+	if particles and is_instance_valid(particles):
+		particles.queue_free()
+
+func _get_circle_texture() -> Texture2D:
+	# Generate a simple circle texture for particles
+	var img = Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var center = Vector2(8, 8)
+	for y in range(16):
+		for x in range(16):
+			var pos = Vector2(x, y)
+			if pos.distance_to(center) <= 6:
+				img.set_pixel(x, y, Color(1, 1, 1, 1))
+	var tex = ImageTexture.create_from_image(img)
+	return tex
 
 func _animate_hardening():
 	# Flash WHITE (0.1s) -> desaturate to gray-blue (0.3s) -> darken to cool steel (0.4s)

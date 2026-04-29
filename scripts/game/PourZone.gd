@@ -17,14 +17,17 @@ var metal_flow: Node
 
 # Visual children
 var _stream_line: Line2D
+var _glow_line: Line2D        # FEATURE-007: halo glow behind stream
 var _glow_rect: ColorRect
 var _particle_container: Node2D
+var _pour_origin_ghost: ColorRect  # FEATURE-007: ghost indicator at pour origin
 var _last_particle_time: float = 0.0
 var _active_metal: String = "iron"
 var _last_pour_metal: String = "iron"  # tracks metal type at pour start for accumulator flush on gate toggle
 var _screen_height: float = 720.0
 var _pour_zone_bg: ColorRect  # scene reference for pulsing border effect
 var _pulsing_tween: Tween = null  # stored to prevent accumulation on re-call
+var _ghost_tween: Tween = null  # FEATURE-007: ghost pulse tween
 
 # Dynamic pour params driven by metal definition
 var _current_stream_width: float = 8.0
@@ -51,6 +54,18 @@ func _setup_visuals():
 	_stream_line.visible = false
 	add_child(_stream_line)
 
+	# FEATURE-007: StreamGlowLine — wide halo behind stream
+	_glow_line = Line2D.new()
+	_glow_line.name = "StreamGlowLine"
+	_glow_line.width = _current_stream_width * 4
+	_glow_line.default_color = _get_metal_glow_color(_active_metal)
+	_glow_line.round_precision = 8
+	_glow_line.visible = false
+	# Glow goes behind stream line
+	_stream_line.z_index = 1
+	_glow_line.z_index = 0
+	add_child(_glow_line)
+
 	# Glow rect at pour point
 	_glow_rect = ColorRect.new()
 	_glow_rect.name = "StreamGlow"
@@ -64,6 +79,16 @@ func _setup_visuals():
 	_particle_container = Node2D.new()
 	_particle_container.name = "ParticleContainer"
 	add_child(_particle_container)
+
+	# FEATURE-007: Pour-origin ghost indicator — dim outline shown at pour point
+	_pour_origin_ghost = ColorRect.new()
+	_pour_origin_ghost.name = "PourOriginGhost"
+	_pour_origin_ghost.color = _get_metal_glow_color(_active_metal)
+	_pour_origin_ghost.size = Vector2(_current_stream_width * 2.5, _current_stream_width * 2.5)
+	_pour_origin_ghost.position = Vector2(-_current_stream_width * 1.25, -_current_stream_width * 1.25)
+	_pour_origin_ghost.modulate.a = 0.0
+	_pour_origin_ghost.visible = false
+	add_child(_pour_origin_ghost)
 
 	# Get reference to PourZoneBG for pulsing border effect
 	_pour_zone_bg = get_node_or_null("PourZoneBG")
@@ -128,6 +153,14 @@ func _update_stream_visuals():
 	_stream_line.default_color = _get_metal_color(_active_metal)
 	_stream_line.width = _current_stream_width
 
+	# FEATURE-007: StreamGlowLine — wide halo behind stream
+	if _glow_line:
+		_glow_line.clear_points()
+		_glow_line.add_point(top_pos)
+		_glow_line.add_point(end_pos)
+		_glow_line.default_color = _get_metal_glow_color(_active_metal)
+		_glow_line.width = _current_stream_width * 4
+
 	# Glow follows the end of the stream (mold position)
 	_glow_rect.global_position = end_pos + Vector2(-_current_stream_width * 1.5, -_current_stream_width * 1.5)
 	_glow_rect.color = _get_metal_glow_color(_active_metal)
@@ -136,6 +169,14 @@ func _update_stream_visuals():
 	# Pulse glow alpha
 	var pulse = (sin(Time.get_ticks_msec() * 0.01) + 1.0) * 0.25 + 0.3
 	_glow_rect.modulate.a = pulse
+
+	# FEATURE-007: Pour-origin ghost follows pour point with soft pulse
+	if _pour_origin_ghost:
+		_pour_origin_ghost.global_position = end_pos + Vector2(-_current_stream_width * 1.25, -_current_stream_width * 1.25)
+		_pour_origin_ghost.color = _get_metal_glow_color(_active_metal)
+		_pour_origin_ghost.size = Vector2(_current_stream_width * 2.5, _current_stream_width * 2.5)
+		var ghost_pulse = (sin(Time.get_ticks_msec() * 0.008) + 1.0) * 0.15 + 0.25
+		_pour_origin_ghost.modulate.a = ghost_pulse
 
 func _spawn_drip_particle():
 	if not _particle_container:
@@ -260,19 +301,26 @@ func _on_metal_selected(metal_id: String):
 	if is_pouring:
 		_stream_line.default_color = _get_metal_color(metal_id)
 		_glow_rect.color = _get_metal_glow_color(metal_id)
+		# FEATURE-007: mid-stream metal color update for glow line and ghost
+		if _glow_line:
+			_glow_line.default_color = _get_metal_glow_color(metal_id)
+		if _pour_origin_ghost:
+			_pour_origin_ghost.color = _get_metal_glow_color(metal_id)
 
 func _on_waste_routed(_metal_id: String, world_pos: Vector2, _amount: float):
 	# Brief orange flash/shake at the pour origin to indicate rejection
 	_trigger_rejection_effect(world_pos)
 
 func _trigger_rejection_effect(world_pos: Vector2):
-	# Create a brief orange flash indicator at the rejection point.
-	# world_pos is in world-space; flash.position is in PourZone's local space,
-	# so convert by subtracting PourZone's world origin.
+	# Brief orange flash/shake at the rejection point.
+	# world_pos is in world-space; flash.position is in PourZone's local space.
+	# Convert: local = world - global_position.
 	var flash = ColorRect.new()
 	flash.name = "RejectionFlash"
 	flash.color = Color.ORANGE * 0.7
 	flash.size = Vector2(20, 20)
+	# FIX FEATURE-007: was doing world_pos - global_position - Vector2(10,10)
+	# which subtracted an extra 10px incorrectly. Correct: center flash at world_pos.
 	flash.position = world_pos - global_position - Vector2(10, 10)
 	flash.z_index = 100
 	add_child(flash)
@@ -287,14 +335,38 @@ func _trigger_rejection_effect(world_pos: Vector2):
 func _show_stream_visuals():
 	if _stream_line:
 		_stream_line.visible = true
+	if _glow_line:
+		_glow_line.visible = true
 	if _glow_rect:
 		_glow_rect.visible = true
+	if _pour_origin_ghost:
+		_pour_origin_ghost.visible = true
+		_start_ghost_pulse()
 
 func _hide_stream_visuals():
 	if _stream_line:
 		_stream_line.visible = false
+	if _glow_line:
+		_glow_line.visible = false
 	if _glow_rect:
 		_glow_rect.visible = false
+	if _pour_origin_ghost:
+		_pour_origin_ghost.visible = false
+		_stop_ghost_pulse()
+
+func _start_ghost_pulse():
+	if _ghost_tween:
+		_ghost_tween.kill()
+	_ghost_tween = create_tween()
+	_ghost_tween.set_parallel(true)
+	_ghost_tween.tween_property(_pour_origin_ghost, "scale", Vector2(1.2, 1.2), 0.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	_ghost_tween.tween_property(_pour_origin_ghost, "scale", Vector2(0.9, 0.9), 0.5).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE).from_current()
+	_ghost_tween.set_loops(-1)
+
+func _stop_ghost_pulse():
+	if _ghost_tween:
+		_ghost_tween.kill()
+		_ghost_tween = null
 
 func _get_metal_color(metal_id: String) -> Color:
 	# Return molten hot color for the stream: brighter than base metal color.
