@@ -26,7 +26,7 @@ const GATE_ROUTING: Dictionary = {
 
 func _ready():
 	_setup_gates()
-	game_controller = get_node("/root/GameController")
+	game_controller = get_node_or_null("/root/GameController")
 	# Note: stream_entered_intake signal was never declared — removed spurious connect
 
 func _setup_gates():

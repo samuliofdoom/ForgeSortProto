@@ -23,7 +23,7 @@ func _ready():
 	game_data = get_node("/root/GameData")
 	flow_controller = get_node("/root/FlowController")
 	score_manager = get_node("/root/ScoreManager")
-	game_controller = get_node("/root/GameController")
+	game_controller = get_node_or_null("/root/GameController")
 
 func _process(delta):
 	if active_pour_zone and active_pour_zone.is_pouring:

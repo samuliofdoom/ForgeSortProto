@@ -1,57 +1,51 @@
 # Handoff — Session Complete
 
-**Date**: 2026-04-29
-**Commit**: `8648426` (pushed)
-**Branch**: `master`
+**Date**: 2026-04-29 (later session)
+**Commit**: `77145f0` (pushed)
+**Branch**: `master` — up to date with origin
 **All 9 `validate.sh` checks pass**: YES
 
 ---
 
 ## Current State
 
-- **Commit**: `8648426` — GateDebugHUD (F1-toggleable debug overlay)
-- **Branch**: `master` — up to date with origin
-- **validate.sh**: 9/9 checks pass
-- **Headless**: `godot --headless --path . --quit-after 300` exits 0
-- **Zero open bugs in beads tracker**
+- **Commit**: `77145f0` — Phase B complete: TD-003 hardcode refactor + TD-001 cleanup
+- **Phase A**: ✅ All 4 P1 bugs verified correct
+- **Phase B**: ✅ All items completed (6 commits)
+- **Zero open bugs** — all tracked issues resolved
+
+---
 
 ## This Session
 
-Full game dev team analysis (5 agents simultaneously: Producer, Designer, Coder, QA, Artist).
-Reports synthesized. All findings documented in `Docs/dev_diary.md`.
+Full 5-agent game dev team analysis (Producer, Designer, Coder, QA, Artist) spun up simultaneously. Creative Director answered 5 open questions:
 
-### Bugs Found (P1 — Fix Before Next Playtest)
+| Decision | Answer |
+|----------|--------|
+| Gate G3 routing | Keep A+C (intentional challenge) |
+| Audio style | Fantasy Forge — warm analog procedural synth |
+| Difficulty | Fixed 3-order prototype scope |
+| Visual style | Sprite-based upgrade |
+| Mold cooldown | Built into lock lifecycle (no separate timer) |
 
-| ID | Title | File | Fix |
-|----|-------|------|-----|
-| BUG-001 | Speed bonus uses game clock, not per-order clock | `ScoreManager.gd:54` | Add `order_start_time` to OrderManager |
-| BUG-002 | flush_accumulator double-penalizes on gate toggle | `MetalFlow.gd:50-54` | Route via `get_mold_for_pour_position()` without waste charge |
-| BUG-003 | Mold contamination leaks across orders | `Mold.gd:150-158` | Always `clear_mold()` at order start |
-| BUG-004 | `game_over` signal has no UI handler | `ScoreManager.gd:46`, `ResultPanel.gd` | Connect `game_over` + add "GAME OVER" overlay |
+### Commits This Session (6 total)
 
-### Top 5 Actionable Fixes (from production roadmap)
+| Commit | Description |
+|--------|-------------|
+| `ea31cd8` | fix NEW-001: get_mold_for_pour_position use pour_intake not active_gates[0] |
+| `73e6290` | feat: Fantasy Forge audio system — procedural warm analog synth |
+| `30eb613` | Amplify intake glow: 0.8s fade + pulse + CPUParticles2D burst |
+| `c4b95cf` | Add gate routing labels (G1→A/B, G2→B/C, G3→A+C, G4→C) |
+| `77145f0` | Clean up technical debt: TD-003 MoldArea hardcode refactor + TD-001 comment |
+| `Mold.gd` | cool/harden tween chain, fill bar tween, padlock icon (in ea31cd8 area) |
 
-1. **Fix speed bonus per-order** — add `order_start_time` to OrderManager, set in `start_next_order()`, pass to `calculate_order_score()`
-2. **Fix flush_accumulator** — route via `get_mold_for_pour_position()` without charging waste
-3. **Clear contamination at order start** — always call `clear_mold()` in `_on_order_started()`
-4. **Handle `game_over` signal** — connect to ResultPanel, add "GAME OVER" splash + screen shake
-5. **Add audio layer** — AudioStreamPlayer in PourZone/Mold/Gate/WasteMeter
+### Creative Director Answers (on record)
 
-### Top 5 Polish Items (Phase B)
-
-1. Mold cool/harden animation (tween chain: flash → desaturate → darken → scale bounce)
-2. Gate routing disclosure (labels on buttons: G1→"A/B", G2→"B/C", etc.)
-3. Speed timer display (wire SpeedTimer.gd to OrderPanel)
-4. Intake glow amplification (0.8s + particle burst)
-5. Fill bar tween smoothing
-
-### Test Gaps (QA Priority)
-
-1. `get_mold_for_pour_position` never called in any test
-2. `flush_accumulator` mid-pour path untested
-3. `game_over` → UI handler path untested
-4. UI panels (MetalSelector, OrderPanel, GateToggleUI) zero headless coverage
-5. Mold lock state not verified in full order cycle
+- **Gate G3 routing**: Keep A+C (intentional — prevents trivial bypass of routing challenge)
+- **Audio**: Fantasy Forge — warm analog synth, procedural via AudioStreamGenerator + base64 WAV
+- **Difficulty**: Fixed 3 orders (Iron Sword → Steel Sword → Noble Sword)
+- **Visual**: Sprite-based (upgrade from ColorRects — future phase)
+- **Cooldown mechanic**: Mold lock on order complete IS the cooldown — no separate timer
 
 ---
 
@@ -60,7 +54,7 @@ Reports synthesized. All findings documented in `Docs/dev_diary.md`.
 ### Scripts
 **Game** (11): GameController, MetalFlow, FlowController, Gate, Intake, Mold, MetalSource, PourZone, OrderManager, ScoreManager, PartPopEffect
 
-**UI** (9): MetalSelector, OrderPanel, WasteMeter, ResultPanel, GateToggleUI, GateDebugHUD, SpeedTimer, ScoreDisplay, PartPopLabel
+**UI** (10): MetalSelector, OrderPanel, WasteMeter, ResultPanel, GateToggleUI, GateDebugHUD, SpeedTimer, ScoreDisplay, PartPopLabel, AudioManager
 
 **Test/Dev** (9): smoke_check, verify_game_loads, detect_unused_params, detect_constructor_mismatches, full_gameplay_test, test_flow_controller_routing, test_mold_states, test_order_transitions, test_speed_bonus
 
@@ -68,7 +62,7 @@ Reports synthesized. All findings documented in `Docs/dev_diary.md`.
 `Main.tscn` (load_steps=19)
 
 ### Autoloads
-GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
+GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow, AudioManager
 
 ### Orders (3 fixed)
 1. Iron Sword: iron blade/guard/grip → 100 pts
@@ -78,20 +72,33 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 ### Metals
 Iron (slow/wide), Steel (fast/narrow), Gold (fast/narrow/high penalty)
 
-### Gates (routing table)
-- G1 → intake_a + intake_b
-- G2 → intake_b + intake_c
-- G3 → intake_a + intake_b + intake_c
-- G4 → intake_c
+### Gates (routing — now labeled in UI)
+G1 → intake_a + intake_b (labeled "A/B")
+G2 → intake_b + intake_c (labeled "B/C")
+G3 → intake_a + intake_c (labeled "A+C")
+G4 → intake_c (labeled "C")
 
 ### Molds
 blade (intake_a), guard (intake_b), grip (intake_c)
 
+### Audio (Fantasy Forge — procedural)
+- Pour hum: continuous 100Hz + vibrato
+- Gate click: 60ms metallic noise burst
+- Mold contaminated: 200ms dissonant 220Hz+233Hz beat
+- Mold complete: 880Hz bell with harmonics
+- Order complete: ascending C4-E4-G4 chord
+- Game over: descending 80Hz→40Hz rumble
+- Waste tick: 80ms noise burst
+
 ---
 
-## Dev Diary
+## Known Technical Debt (remaining)
 
-Full analysis now in `Docs/dev_diary.md` — includes all 5 agent reports, bug register, production phases, and open questions for creative director.
+| TD | Issue | Severity | Status |
+|----|-------|----------|--------|
+| TD-002 | Inconsistent routing API (get_mold_for_intake vs get_mold_for_pour_position) | Medium | Route uses get_mold_for_pour_position; get_mold_for_intake deprecated |
+| TD-005 | PartPopEffect node lookups ignore null silently | Low | Acceptable fallback |
+| — | Visual sprites | P3 | Future phase (sprite-based upgrade) |
 
 ---
 
@@ -108,20 +115,18 @@ godot -d --path .
 # Validate all checks
 ./validate.sh
 
-# Debug HUD (press F1 during play)
+# Debug HUD (press F3 during play — changed from F1 to avoid Godot editor conflict)
 # Shows live G1-G4 OPEN/CLOSED state + routing paths
 ```
 
 ---
 
-## Next Session
+## Next Session Priorities
 
 1. Run `./validate.sh` — must pass all 9
-2. Fix BUG-001: speed bonus per-order timing (OrderManager + ScoreManager)
-3. Fix BUG-002: flush_accumulator double-penalty (MetalFlow)
-4. Fix BUG-003: contamination leakage (Mold)
-5. Fix BUG-004: game_over UI handler (ResultPanel)
-6. Run validate.sh after each fix
-7. Push each fix as a separate commit
+2. **Test gap closure**: Add tests for `get_mold_for_pour_position` routing path
+3. **Visual sprite upgrade**: Replace ColorRects with proper sprites (P3 — when artist has assets)
+4. **Playtest**: Run the game interactively and assess feel after Phase A+B fixes
+5. **QA edge cases**: Pour-at-order-complete, gate toggle spam, duplicate game_over guard
 
 Full details in `Docs/dev_diary.md`.
