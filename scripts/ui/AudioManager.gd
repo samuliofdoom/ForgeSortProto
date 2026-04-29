@@ -65,6 +65,8 @@ func _process(delta: float) -> void:
 	if _pour_player and abs(_pour_volume - _target_pour_volume) > 0.01:
 		_pour_volume = move_toward(_pour_volume, _target_pour_volume, _pour_fade_speed * delta)
 		_pour_player.volume_db = linear_to_db(_pour_volume)
+	# Re-check mold signals each frame to catch dynamically-added molds
+	_connect_mold_signals()
 
 # ============================================================================
 # Sound Generation Helpers

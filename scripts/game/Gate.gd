@@ -19,9 +19,7 @@ func _ready():
 	flow_controller = get_node_or_null("/root/FlowController")
 	# Gate state is synced via FlowController.toggle_gate() + gate_toggled signal
 
-	gate_toggled.connect(_on_gate_toggled, CONNECT_ONE_SHOT)
 	_setup_tooltip()
-
 	# Use built-in mouse signals from Area2D/StaticBody2D for hover detection
 	mouse_entered.connect(_on_gate_mouse_entered)
 	mouse_exited.connect(_on_gate_mouse_exited)
@@ -50,11 +48,6 @@ func _setup_tooltip():
 
 func _get_tooltip_text() -> String:
 	# Show which mold(s) this gate feeds based on GATE_ROUTING
-	var intake_to_mold = {
-		"intake_a": "Blade",
-		"intake_b": "Guard",
-		"intake_c": "Grip"
-	}
 	var flow_ctrl = get_node_or_null("/root/FlowController")
 	if not flow_ctrl:
 		return gate_id
@@ -63,7 +56,7 @@ func _get_tooltip_text() -> String:
 		return gate_id
 	var parts: Array[String] = []
 	for intake in intakes:
-		var mold = intake_to_mold.get(intake, intake)
+		var mold = flow_ctrl.INTAKE_TO_MOLD.get(intake, intake)
 		if not parts.has(mold):
 			parts.append(mold)
 	return "→ " + " + ".join(parts)
@@ -77,9 +70,9 @@ func toggle():
 	if flow_controller:
 		flow_controller.toggle_gate(gate_id)
 
-func _on_gate_toggled(p_gate_id: String, open: bool):
+func _on_gate_toggled(p_gate_id: String, p_is_open: bool):
 	if p_gate_id == self.gate_id:
-		is_open = open
+		is_open = p_is_open
 		_update_visual()
 
 func _update_visual():

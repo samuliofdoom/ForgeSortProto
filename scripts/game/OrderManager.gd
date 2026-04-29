@@ -45,6 +45,9 @@ func complete_part(part_id: String):
 	completed_parts.append(part_id)
 	completed_parts_changed.emit(completed_parts.duplicate())
 
+	if current_order.parts == null:
+		return
+
 	var all_complete = true
 	for part in current_order.parts:
 		if not completed_parts.has(part):

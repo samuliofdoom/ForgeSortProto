@@ -11,6 +11,7 @@ var contamination_count: int = 0
 var start_time: int = 0
 var order_start_time: int = 0
 var game_started: bool = false
+var _game_over_fired: bool = false
 
 const WASTE_PENALTY_PER_UNIT: float = 1.0
 const CONTAMINATION_PENALTY: int = 25
@@ -27,6 +28,7 @@ func reset():
 	total_score = 0
 	waste_units = 0.0
 	contamination_count = 0
+	_game_over_fired = false
 	start_time = Time.get_ticks_msec()
 	order_start_time = start_time
 	score_updated.emit(total_score)
@@ -47,7 +49,8 @@ func add_waste(amount: float):
 	score_updated.emit(total_score)
 
 	# Hard fail at 100% waste meter
-	if waste_units >= WASTE_METER_MAX:
+	if waste_units >= WASTE_METER_MAX and not _game_over_fired:
+		_game_over_fired = true
 		game_over.emit(total_score, waste_percent)
 
 func add_contamination():

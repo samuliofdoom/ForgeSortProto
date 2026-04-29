@@ -15,6 +15,9 @@ const INTAKE_TO_MOLD: Dictionary = {
 	"intake_c": "grip"
 }
 
+const INTAKE_OFFSET_LOW: float = -60.0
+const INTAKE_OFFSET_MID: float = 60.0
+
 const GATE_ROUTING: Dictionary = {
 	"gate_01": ["intake_a", "intake_b"],
 	"gate_02": ["intake_b", "intake_c"],
@@ -71,9 +74,9 @@ func get_mold_for_intake(intake_id: String) -> String:
 
 # Maps world-position offset (relative to mold center) to an intake id.
 func _intake_for_x_offset(offset_x: float) -> String:
-	if offset_x < -60.0:
+	if offset_x < INTAKE_OFFSET_LOW:
 		return "intake_a"
-	elif offset_x < 60.0:
+	elif offset_x < INTAKE_OFFSET_MID:
 		return "intake_b"
 	else:
 		return "intake_c"
@@ -120,7 +123,9 @@ func reset_all_gates():
 # intake_id is non-empty when the pour position targets a blocked intake (waste).
 # Both empty = pour was outside all intake zones (fallback routing).
 func get_mold_for_pour_position(world_position: Vector2) -> Dictionary:
-	var mold_area = game_controller.get_mold_area() if game_controller else null
+	if not game_controller:
+		return {"mold_id": "", "intake_id": ""}
+	var mold_area = game_controller.get_mold_area()
 	if not mold_area:
 		return {"mold_id": "", "intake_id": ""}
 
