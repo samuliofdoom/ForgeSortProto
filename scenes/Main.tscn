@@ -525,6 +525,17 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0.1, 0.1, 0.15, 0.95)
 
+[node name="Overlay" type="ColorRect" parent="UI/ResultPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+color = Color(0.0, 0.0, 0.0, 0.0)
+
 [node name="ResultLabel" type="Label" parent="UI/ResultPanel"]
 layout_mode = 1
 anchors_preset = 8

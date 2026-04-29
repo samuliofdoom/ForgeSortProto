@@ -31,6 +31,8 @@ func start_next_order():
 	current_order = game_data.get_order(current_order_index)
 	completed_parts.clear()
 	completed_parts_changed.emit(completed_parts.duplicate())
+	if score_manager:
+		score_manager.start_order_timer()
 	order_started.emit(current_order)
 
 func complete_part(part_id: String):

@@ -9,6 +9,7 @@ var total_score: int = 0
 var waste_units: float = 0.0
 var contamination_count: int = 0
 var start_time: int = 0
+var order_start_time: int = 0
 var game_started: bool = false
 
 const WASTE_PENALTY_PER_UNIT: float = 1.0
@@ -27,8 +28,12 @@ func reset():
 	waste_units = 0.0
 	contamination_count = 0
 	start_time = Time.get_ticks_msec()
+	order_start_time = start_time
 	score_updated.emit(total_score)
 	waste_updated.emit(0.0)
+
+func start_order_timer():
+	order_start_time = Time.get_ticks_msec()
 
 func reset_order():
 	contamination_count = 0
@@ -53,7 +58,7 @@ func add_contamination():
 
 func calculate_order_score(order: OrderDefinition) -> int:
 	var base = order.base_value
-	var elapsed = (Time.get_ticks_msec() - start_time) / 1000.0
+	var elapsed = (Time.get_ticks_msec() - order_start_time) / 1000.0
 
 	if elapsed < SPEED_THRESHOLD_SECONDS:
 		base += SPEED_BONUS

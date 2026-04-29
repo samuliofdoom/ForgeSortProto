@@ -107,9 +107,7 @@ func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float):
 				nearest_mold_id = mold_id
 
 	if nearest_mold_id and molds[nearest_mold_id]:
-		# Fallback routing means the pour bypassed the gate/intake system —
-		# count it as waste since it didn't go through proper routing.
-		if score_manager:
-			score_manager.add_waste(amount)
+		# Fallback routing delivers metal to nearest mold (correct behavior).
+		# waste_routed.emit() fires for visual feedback only — no score penalty.
 		waste_routed.emit(metal_id, pour_pos, amount)
 		molds[nearest_mold_id].receive_metal(metal_id, amount)
