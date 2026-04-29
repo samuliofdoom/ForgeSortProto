@@ -357,33 +357,31 @@ func set_pour_hum_volume(volume: float) -> void:
 # Signal Handlers
 # ============================================================================
 
-func _on_metal_poured(amount: float, is_waste: bool) -> void:
-	# Volume scales with pour rate
+func _on_metal_poured(metal_id: String, world_position: Vector2, amount: float) -> void:
+	# Volume scales with pour rate; ignore waste status since we only emit on success
 	var vol = clamp(amount / 10.0, 0.1, 0.7)
-	if is_waste:
-		vol *= 0.3
 	start_pour_hum(vol)
 
-func _on_waste_routed() -> void:
+func _on_waste_routed(_metal_id: String, _world_pos: Vector2, _amount: float) -> void:
 	play_waste_drip()
 
-func _on_gate_toggled(gate_idx: int, mold_type: int) -> void:
+func _on_gate_toggled(gate_id: String, is_open: bool) -> void:
 	play_gate_click()
 
-func _on_order_completed(order_id: int) -> void:
+func _on_order_completed(completed_order: OrderDefinition, order_score: int) -> void:
 	play_order_complete()
 
-func _on_game_over() -> void:
+func _on_game_over(_final_score: int, _waste_percent: float) -> void:
 	play_game_over()
 
-func _on_mold_filled(mold_instance_id: int) -> void:
+func _on_mold_filled(mold_id: String, fill_percent: float) -> void:
 	play_fill_clank()
 
-func _on_mold_contaminated(mold_instance_id: int) -> void:
+func _on_mold_contaminated(mold_id: String) -> void:
 	play_contamination()
 
-func _on_mold_completed(mold_instance_id: int) -> void:
+func _on_mold_completed(mold_id: String) -> void:
 	play_mold_complete()
 
-func _on_part_produced(mold_instance_id: int, metal_type: int) -> void:
+func _on_part_produced(part_id: String, mold_id: String) -> void:
 	play_part_pop()

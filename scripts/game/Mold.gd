@@ -198,8 +198,18 @@ func _on_order_started(new_order: OrderDefinition):
 		score_manager.reset_order()
 	is_locked = false
 	mold_state = MoldState.IDLE
+	# Always clear mold at order start — fixes BUG-003: partial fills
+	# that were neither complete nor contaminated would leak into next order
 	if is_complete or is_contaminated:
 		clear_mold()
+	else:
+		# Partial fill: reset state without signal/effects (avoids triggering
+		# mold_cleared → OrderManager recursion during order transition)
+		current_fill = 0.0
+		current_metal = ""
+		is_contaminated = false
+		is_complete = false
+		_update_display()
 	if new_order.part_requests.has(part_type):
 		required_metal = new_order.part_requests[part_type]
 	_update_display()

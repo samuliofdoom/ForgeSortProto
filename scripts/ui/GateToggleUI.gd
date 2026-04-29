@@ -4,9 +4,14 @@ extends Control
 @onready var gate_02_btn: Button = $Gate02Button
 @onready var gate_03_btn: Button = $Gate03Button
 @onready var gate_04_btn: Button = $Gate04Button
+@onready var gate_01_route: Label = $Gate01Route
+@onready var gate_02_route: Label = $Gate02Route
+@onready var gate_03_route: Label = $Gate03Route
+@onready var gate_04_route: Label = $Gate04Route
 
 var flow_controller: Node
 var gate_buttons: Dictionary = {}
+var route_labels: Dictionary = {}
 var _guard_recursion: bool = false
 
 func _ready():
@@ -19,6 +24,12 @@ func _ready():
 		"gate_02": gate_02_btn,
 		"gate_03": gate_03_btn,
 		"gate_04": gate_04_btn
+	}
+	route_labels = {
+		"gate_01": gate_01_route,
+		"gate_02": gate_02_route,
+		"gate_03": gate_03_route,
+		"gate_04": gate_04_route
 	}
 
 	for btn in gate_buttons.values():
@@ -50,8 +61,8 @@ func _update_button_states():
 	_guard_recursion = true
 	for gate_id in gate_buttons:
 		var btn = gate_buttons[gate_id]
+		var is_open = flow_controller.get_gate_state(gate_id) if flow_controller else false
 		if btn:
-			var is_open = flow_controller.get_gate_state(gate_id) if flow_controller else false
 			# Only update if different to avoid triggering toggled signal
 			if btn.button_pressed != is_open:
 				btn.button_pressed = is_open
@@ -59,4 +70,8 @@ func _update_button_states():
 				btn.modulate = Color.GREEN
 			else:
 				btn.modulate = Color.WHITE
+		# Color route label to match gate state
+		var lbl = route_labels.get(gate_id)
+		if lbl:
+			lbl.modulate = Color.GREEN if is_open else Color.WHITE
 	_guard_recursion = false

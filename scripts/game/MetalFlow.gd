@@ -62,6 +62,7 @@ func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 		var result = flow_controller.get_mold_for_pour_position(pour_pos)
 		if result.mold_id != "":
 			flow_controller.route_metal_to_mold(result.intake_id, result.mold_id, metal_id, amount)
+			metal_poured.emit(metal_id, pour_pos, amount)
 		elif result.intake_id != "":
 			# Intake blocked by gates — route to fallback
 			_route_fallback(metal_id, pour_pos, amount)
