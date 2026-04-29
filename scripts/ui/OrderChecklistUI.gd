@@ -20,10 +20,9 @@ func _ready():
 	# Also listen to mold part_produced for real-time checklist updates
 	var mold_area = get_node_or_null("/root/Main/MoldArea")
 	if mold_area:
-		for mold_name in ["BladeMold", "GuardMold", "GripMold"]:
-			var mold = mold_area.get_node_or_null(mold_name)
-			if mold and mold.has_signal("part_produced"):
-				mold.part_produced.connect(_on_part_produced.bind(mold_name))
+		for mold in mold_area.get_children():
+			if mold.has_signal("part_produced"):
+				mold.part_produced.connect(_on_part_produced)
 
 	_update_visibility()
 

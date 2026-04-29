@@ -89,16 +89,19 @@ func _on_mold_tapped():
 		clear_mold()
 
 func receive_metal(metal_id: String, amount: float, penalize: bool = true):
+	# Guard: locked mold — discard metal and penalize
 	if is_locked:
 		if penalize:
 			score_manager.add_waste(amount)
 		return
 
+	# Guard: hardening — no more metal accepted
 	if mold_state == MoldState.HARDENING:
 		if penalize:
 			score_manager.add_waste(amount)
 		return
 
+	# Guard: mold already complete — handle wrong metal vs correct metal
 	if is_complete:
 		if metal_id != required_metal and not is_contaminated:
 			_trigger_wrong_metal_flash(metal_id)
@@ -108,22 +111,27 @@ func receive_metal(metal_id: String, amount: float, penalize: bool = true):
 				score_manager.add_waste(amount)
 		return
 
+	# Guard: overfilled (shouldn't receive more)
 	if not is_contaminated and current_fill >= fill_amount:
 		if penalize:
 			score_manager.add_waste(amount)
 		return
 
+	# Establish current metal type on first pour
 	if current_metal == "":
 		current_metal = metal_id
 
+	# Guard: wrong metal type — contamination
 	if metal_id != required_metal and not is_contaminated:
 		_trigger_wrong_metal_flash(metal_id)
 		_trigger_contamination(metal_id, amount)
 		return
 
+	# Guard: metal type mismatch mid-fill
 	if metal_id != current_metal:
 		return
 
+	# Process fill
 	is_filling = true
 	mold_state = MoldState.FILLING
 	current_fill += amount
@@ -226,61 +234,70 @@ func _on_order_started(new_order: OrderDefinition):
 	_update_display()
 
 func _update_display():
-	if fill_bar:
-		var target_val = get_fill_percent() * 100
-		# Kill existing tween before creating new to prevent accumulation during rapid fills
-		if _display_tween:
-			_display_tween.kill()
-		_display_tween = create_tween()
-		_display_tween.tween_property(fill_bar, "value", target_val, 0.25)
-		if mold_state == MoldState.HARDENING:
-			fill_bar.modulate = Color.ORANGE
-		elif is_contaminated:
-			fill_bar.modulate = Color.RED
-		elif is_complete:
-			fill_bar.modulate = Color.GREEN
-		elif current_fill > 0:
-			fill_bar.modulate = Color.YELLOW
-		else:
-			fill_bar.modulate = Color.WHITE
-
-	if mold_sprite:
-		if mold_state == MoldState.HARDENING:
-			mold_sprite.modulate = Color(0.5, 0.55, 0.6)
-		elif is_contaminated:
-			mold_sprite.modulate = Color.RED * 0.5
-		elif is_complete:
-			mold_sprite.modulate = Color.GREEN * 0.5
-		elif current_fill > 0:
-			mold_sprite.modulate = MetalDefinition.get_color(current_metal) * 0.7
-		elif is_locked:
-			mold_sprite.modulate = Color.DIM_GRAY * 0.5
-		else:
-			mold_sprite.modulate = Color.WHITE
-		# Apply ambient glow when filling - brighter glow based on fill amount
-		_update_fill_glow()
-
-	if state_label:
-		if mold_state == MoldState.HARDENING:
-			state_label.text = "Cooling..."
-			state_label.modulate = Color.ORANGE
-		elif is_complete:
-			state_label.text = "Done!"
-			state_label.modulate = Color.GREEN
-		elif is_contaminated:
-			state_label.text = "Tap to Clear"
-			state_label.modulate = Color.RED
-		elif is_locked:
-			state_label.text = "Locked"
-			state_label.modulate = Color.DIM_GRAY
-		elif current_fill > 0:
-			state_label.text = "%.0f%%" % (get_fill_percent() * 100)
-			state_label.modulate = Color.YELLOW
-		else:
-			state_label.text = required_metal.capitalize()
-			state_label.modulate = Color.WHITE
-
+	_update_fill_bar()
+	_update_mold_sprite()
+	_update_state_label()
 	_update_padlock_visibility()
+
+func _update_fill_bar():
+	if not fill_bar:
+		return
+	var target_val = get_fill_percent() * 100
+	# Kill existing tween before creating new to prevent accumulation during rapid fills
+	if _display_tween:
+		_display_tween.kill()
+	_display_tween = create_tween()
+	_display_tween.tween_property(fill_bar, "value", target_val, 0.25)
+	if mold_state == MoldState.HARDENING:
+		fill_bar.modulate = Color.ORANGE
+	elif is_contaminated:
+		fill_bar.modulate = Color.RED
+	elif is_complete:
+		fill_bar.modulate = Color.GREEN
+	elif current_fill > 0:
+		fill_bar.modulate = Color.YELLOW
+	else:
+		fill_bar.modulate = Color.WHITE
+
+func _update_mold_sprite():
+	if not mold_sprite:
+		return
+	if mold_state == MoldState.HARDENING:
+		mold_sprite.modulate = Color(0.5, 0.55, 0.6)
+	elif is_contaminated:
+		mold_sprite.modulate = Color.RED * 0.5
+	elif is_complete:
+		mold_sprite.modulate = Color.GREEN * 0.5
+	elif current_fill > 0:
+		mold_sprite.modulate = MetalDefinition.get_color(current_metal) * 0.7
+	elif is_locked:
+		mold_sprite.modulate = Color.DIM_GRAY * 0.5
+	else:
+		mold_sprite.modulate = Color.WHITE
+	# Apply ambient glow when filling - brighter glow based on fill amount
+	_update_fill_glow()
+
+func _update_state_label():
+	if not state_label:
+		return
+	if mold_state == MoldState.HARDENING:
+		state_label.text = "Cooling..."
+		state_label.modulate = Color.ORANGE
+	elif is_complete:
+		state_label.text = "Done!"
+		state_label.modulate = Color.GREEN
+	elif is_contaminated:
+		state_label.text = "Tap to Clear"
+		state_label.modulate = Color.RED
+	elif is_locked:
+		state_label.text = "Locked"
+		state_label.modulate = Color.DIM_GRAY
+	elif current_fill > 0:
+		state_label.text = "%.0f%%" % (get_fill_percent() * 100)
+		state_label.modulate = Color.YELLOW
+	else:
+		state_label.text = required_metal.capitalize()
+		state_label.modulate = Color.WHITE
 
 func _update_fill_glow():
 	# Add ambient glow to mold sprite based on fill state
