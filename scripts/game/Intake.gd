@@ -93,7 +93,6 @@ func _spawn_particle_burst(color: Color):
 	particles.speed_scale = 1.5
 	particles.direction = Vector2(0, -1)
 	particles.spread = 60.0
-	particles.flatness = 0.2
 	particles.initial_velocity_max = 120.0
 	particles.gravity = Vector2(0, 200)
 	particles.color = Color(color.r, color.g, color.b, 0.8)
