@@ -129,7 +129,7 @@ func _update_visual():
 		collision.disabled = not is_open
 		# Set collision layer: layer index 2 (0-indexed = bit 1 = 0b0010)
 		# This MUST be set for blobs (layer 1, mask includes layer 2) to detect it.
-		collision.set_collision_layer_value(2, true)
+		self.set_collision_layer_value(2, true)
 
 func get_gate_id() -> String:
 	return gate_id
