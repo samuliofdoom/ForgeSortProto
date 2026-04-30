@@ -5,6 +5,9 @@ extends Node
 
 const SAMPLE_RATE := 44100
 
+## Master volume for all sound effects (0.0 to 1.0)
+const SOUND_VOLUME := 0.2
+
 # Pour hum state
 var _pour_player: AudioStreamPlayer = null
 var _pour_volume := 0.0
@@ -50,14 +53,20 @@ func _connect_mold_signals() -> void:
 		return
 	
 	var molds = flow_controller.get_molds()
-	for mold in molds:
-		if mold and mold.mold_filled.get_connections().is_empty():
+	for mold in molds.values():
+		if mold == null:
+			continue
+		if not (mold is Node):
+			continue
+		if not mold.has_signal("mold_filled"):
+			continue
+		if mold.mold_filled.get_connections().is_empty():
 			mold.mold_filled.connect(_on_mold_filled)
-		if mold and mold.mold_contaminated.get_connections().is_empty():
+		if mold.has_signal("mold_contaminated") and mold.mold_contaminated.get_connections().is_empty():
 			mold.mold_contaminated.connect(_on_mold_contaminated)
-		if mold and mold.mold_completed.get_connections().is_empty():
+		if mold.has_signal("mold_completed") and mold.mold_completed.get_connections().is_empty():
 			mold.mold_completed.connect(_on_mold_completed)
-		if mold and mold.part_produced.get_connections().is_empty():
+		if mold.has_signal("part_produced") and mold.part_produced.get_connections().is_empty():
 			mold.part_produced.connect(_on_part_produced)
 
 func _process(delta: float) -> void:
@@ -189,7 +198,7 @@ func play_gate_click() -> void:
 	for i in min(combined.size(), decay.size()):
 		combined[i] += decay[i] * 0.3
 	var stream = _create_wav_buffer(combined)
-	_play_sound(stream, 0.7)
+	_play_sound(stream, 0.7 * SOUND_VOLUME)
 
 ## Fill clank: 40ms metallic impact with 440Hz tone
 func play_fill_clank() -> void:
@@ -200,7 +209,7 @@ func play_fill_clank() -> void:
 	for i in noise.size():
 		combined[i] = noise[i] * 0.5 + tone[i] * 0.5
 	var stream = _create_wav_buffer(combined)
-	_play_sound(stream, 0.8)
+	_play_sound(stream, 0.8 * SOUND_VOLUME)
 
 ## Contamination: 200ms dissonant buzz
 func play_contamination() -> void:
@@ -215,7 +224,7 @@ func play_contamination() -> void:
 		var beat = sin(i * freq1 * TAU / SAMPLE_RATE) * 0.5 + sin(i * freq2 * TAU / SAMPLE_RATE) * 0.5
 		samples[i] = beat * envelope * 0.3
 	var stream = _create_wav_buffer(samples)
-	_play_sound(stream, 0.5)
+	_play_sound(stream, 0.5 * SOUND_VOLUME)
 
 ## Mold complete: satisfying bell ping at 880Hz with harmonics
 func play_mold_complete() -> void:
@@ -235,7 +244,7 @@ func play_mold_complete() -> void:
 			val += sin(TAU * fundamental * harmonics[h] * t) * amplitudes[h]
 		samples[i] = val * envelope * 0.6
 	var stream = _create_wav_buffer(samples)
-	_play_sound(stream, 0.7)
+	_play_sound(stream, 0.7 * SOUND_VOLUME)
 
 ## Order complete fanfare: ascending chord C4-E4-G4 with reverb-like decay
 func play_order_complete() -> void:
@@ -263,7 +272,7 @@ func play_order_complete() -> void:
 			samples[idx] += reverb[i]
 	
 	var stream = _create_wav_buffer(samples)
-	_play_sound(stream, 0.6)
+	_play_sound(stream, 0.6 * SOUND_VOLUME)
 
 ## Game over: low rumble with descending pitch
 func play_game_over() -> void:
@@ -290,7 +299,7 @@ func play_game_over() -> void:
 		samples[i] += rumble[i] * envelope
 	
 	var stream = _create_wav_buffer(samples)
-	_play_sound(stream, 0.7)
+	_play_sound(stream, 0.7 * SOUND_VOLUME)
 
 ## Part pop: high pitched ting at 880Hz
 func play_part_pop() -> void:
@@ -303,7 +312,7 @@ func play_part_pop() -> void:
 		envelope[i] = exp(-t * 10.0)
 		samples[i] *= envelope[i]
 	var stream = _create_wav_buffer(samples)
-	_play_sound(stream, 0.6)
+	_play_sound(stream, 0.6 * SOUND_VOLUME)
 
 ## Waste drip: short water-like drip sound
 func play_waste_drip() -> void:
@@ -316,7 +325,7 @@ func play_waste_drip() -> void:
 	for i in min(drip_tone.size(), combined.size()):
 		combined[i] += drip_tone[i] * 0.4
 	var stream = _create_wav_buffer(combined)
-	_play_sound(stream, 0.5)
+	_play_sound(stream, 0.5 * SOUND_VOLUME)
 
 # ============================================================================
 # Continuous Pour Hum

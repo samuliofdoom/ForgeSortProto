@@ -67,6 +67,9 @@ color = Color(1.0, 0.4, 0.05, 0.6)
 
 [node name="FurnaceAtmosphere" parent="FurnaceGlow" instance=ExtResource("17_furnace_atmosphere")]
 
+[node name="FurnaceNozzle" type="Marker2D" parent="FurnaceGlow"]
+position = Vector2(0, 30)
+
 [node name="HeatDarkeningOverlay" type="ColorRect" parent="."]
 z_index = -85
 anchors_preset = 15
@@ -676,7 +679,7 @@ anchors_preset = 0
 offset_left = 10.0
 offset_top = 210.0
 offset_right = 200.0
-offset_bottom = 350.0
+offset_bottom = 400.0
 script = ExtResource("16_orderchecklist")
 
 [node name="TitleLabel" type="Label" parent="UI/OrderChecklistUI"]
@@ -691,3 +694,34 @@ anchors_preset = 0
 offset_top = 30.0
 offset_right = 190.0
 offset_bottom = 130.0
+
+[node name="TimerContainer" type="HBoxContainer" parent="UI/OrderChecklistUI"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 134.0
+offset_right = 190.0
+offset_bottom = 154.0
+
+[node name="TimerLabel" type="Label" parent="UI/OrderChecklistUI/TimerContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0.0s"
+
+[node name="SpeedBonusLabel" type="Label" parent="UI/OrderChecklistUI/TimerContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "(+30 speed)"
+
+[node name="ContaminationContainer" type="HBoxContainer" parent="UI/OrderChecklistUI"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 158.0
+offset_right = 190.0
+offset_bottom = 178.0
+
+[node name="ContaminationLabel" type="Label" parent="UI/OrderChecklistUI/ContaminationContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Contamination: 0"

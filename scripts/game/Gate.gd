@@ -77,39 +77,59 @@ func _on_gate_toggled(p_gate_id: String, p_is_open: bool):
 
 func _update_visual():
 	if visual:
-		# Kill any running previous tween to prevent conflicts on rapid toggles
+		# Kill any running previous tween before creating a new one to prevent conflicts on rapid toggles
 		if visual.has_meta("_tween"):
 			visual.get_meta("_tween").kill()
 			visual.remove_meta("_tween")
 
-		# Animated tween: elastic ease rotation + color fade white<->green
-		var tween = visual.create_tween()
-		tween.set_parallel(true)
+	# Animated tween: elastic ease rotation + color fade white<->green
+	var tween = visual.create_tween()
+	tween.set_parallel(true)
 
-		var target_rotation = PI / 4 if is_open else 0
-		var target_color = Color.GREEN * 0.8 if is_open else Color.WHITE * 0.8
+	var target_rotation = PI / 4 if is_open else 0
+	var target_color = Color.GREEN * 0.8 if is_open else Color.WHITE * 0.8
 
-		tween.tween_property(visual, "rotation", target_rotation, 0.25)
-		tween.set_ease(Tween.EASE_OUT)
-		tween.set_trans(Tween.TRANS_ELASTIC)
+	tween.tween_property(visual, "rotation", target_rotation, 0.25)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_ELASTIC)
 
-		tween.tween_property(visual, "modulate", target_color, 0.25)
+	tween.tween_property(visual, "modulate", target_color, 0.25)
 
-		visual.set_meta("_tween", tween)
+	visual.set_meta("_tween", tween)
 
-		# Add/remove glow light based on open state
-		if is_open:
-			if not visual.has_node("GateLight"):
-				var light = PointLight2D.new()
-				light.name = "GateLight"
-				light.color = Color.GREEN
-				light.energy = 0.6
-				light.texture_scale = 2.0
-				light.height = 1.0
-				visual.add_child(light)
-		else:
-			if visual.has_node("GateLight"):
-				visual.get_node("GateLight").queue_free()
+	# Add/remove/tween glow light based on open state
+	# FEATURE-009: keep the PointLight2D node, tween energy 0→0.6 / 0.6→0
+	# instead of instant add/remove (which caused a visible pop)
+	if not visual.has_node("GateLight"):
+		var light = PointLight2D.new()
+		light.name = "GateLight"
+		light.color = Color.GREEN
+		light.energy = 0.0  # start invisible
+		light.texture_scale = 2.0
+		light.height = 1.0
+		visual.add_child(light)
+
+	var light: PointLight2D = visual.get_node("GateLight")
+	# Kill any prior energy tween to prevent accumulation on rapid toggles
+	if light.has_meta("_energy_tween"):
+		light.get_meta("_energy_tween").kill()
+		light.remove_meta("_energy_tween")
+
+	var target_energy = 0.6 if is_open else 0.0
+	var et = light.create_tween()
+	et.tween_property(light, "energy", target_energy, 0.3)
+	et.set_ease(Tween.EASE_OUT)
+	et.set_trans(Tween.TRANS_SINE)
+	light.set_meta("_energy_tween", et)
+
+	# Physics: disable collision when open so blobs pass through.
+	# Closed gate = physical barrier (blob bounces off).
+	# Layer 2 = gate blocker — set on the shape so blobs can detect it.
+	if collision:
+		collision.disabled = not is_open
+		# Set collision layer: layer index 2 (0-indexed = bit 1 = 0b0010)
+		# This MUST be set for blobs (layer 1, mask includes layer 2) to detect it.
+		collision.set_collision_layer_value(2, true)
 
 func get_gate_id() -> String:
 	return gate_id

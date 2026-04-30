@@ -38,17 +38,19 @@ func _init():
 	else:
 		print("  PASS")
 
-	# ── Test 2: Slow order (> 30s) → no speed bonus ──────────────────────
-	print("\n[Test 2] Slow order (> 30s elapsed) → no speed bonus")
+	# ── Test 2: Slow order (> 30s) → no speed bonus, but +25 zero-contam bonus ──
+	print("\n[Test 2] Slow order (> 30s elapsed) → no speed bonus, +25 zero-contam bonus")
 	score_manager.reset()
 
 	# Simulate 35 seconds elapsed on this order
 	score_manager.order_start_time = Time.get_ticks_msec() - 35000
 
 	earned = score_manager.calculate_order_score(order)
+	# Expected: base 100 + ZERO_CONTAMINATION_BONUS 25 = 125
+	# (reset() cleared contamination_this_order to 0, so zero-contam bonus applies)
 	print("  elapsed ≈ 35s, base=%d → earned=%d" % [order.base_value, earned])
-	if earned != order.base_value:
-		print("  FAIL: expected exactly %d (base only, no bonus), got %d" % [order.base_value, earned])
+	if earned != order.base_value + 25:
+		print("  FAIL: expected exactly %d (base %d + zero-contam 25), got %d" % [order.base_value + 25, order.base_value, earned])
 		failures += 1
 	else:
 		print("  PASS")

@@ -10,8 +10,12 @@ var score_manager: Node
 var _tween: Tween
 
 func _ready():
-	order_manager = get_node("/root/OrderManager")
-	score_manager = get_node("/root/ScoreManager")
+	# Use externally-set references if available (allows unit-test injection),
+	# otherwise fall back to autoload nodes from the scene tree.
+	if not order_manager:
+		order_manager = get_node("/root/OrderManager")
+	if not score_manager:
+		score_manager = get_node("/root/ScoreManager")
 	order_manager.game_completed.connect(_on_game_completed)
 	score_manager.game_over.connect(_on_game_over)
 	restart_button.pressed.connect(_on_restart_pressed)

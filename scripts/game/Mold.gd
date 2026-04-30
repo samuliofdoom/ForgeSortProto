@@ -6,6 +6,9 @@ signal mold_contaminated(mold_id: String)
 signal mold_completed(mold_id: String)
 signal mold_cleared(mold_id: String)
 signal mold_tapped(mold_id: String)
+signal metal_rejected(mold_id: String, metal_id: String)  # fires when mid-fill metal switch is rejected
+
+var _blob_catcher: Area2D = null
 
 enum MoldState { IDLE, FILLING, COMPLETE, HARDENING, CONTAMINATED, LOCKED }
 
@@ -32,12 +35,13 @@ var _complete_effect_tween: Tween = null
 var _contamination_effect_tween: Tween = null
 var _wrong_metal_flash_tween: Tween = null
 var _receiving_glow_tween: Tween = null
+var _rejection_tween: Tween = null
 var _clear_effect_tween: Tween = null
 
 @onready var fill_bar: ProgressBar = $FillBar
 @onready var state_label: Label = $StateLabel
 @onready var mold_sprite: ColorRect = $MoldSprite
-var mold_glow: ColorRect  # nullable - created programmatically if not in scene
+var _glow_overlay: ColorRect  # nullable - fill-driven halo overlay created in _ready
 var padlock: Node = null  # programmatic padlock icon for locked state
 var _padlock_pulse_tween: Tween = null
 
@@ -68,6 +72,19 @@ func _ready():
 
 	# Create programmatic padlock icon (hidden by default)
 	_create_padlock_icon()
+	# FEATURE-008: fill-driven glow overlay — a separate semi-transparent ColorRect
+	# layered above the mold sprite, driven by fill percent instead of sine-wave brightness
+	_glow_overlay = ColorRect.new()
+	_glow_overlay.name = "GlowOverlay"
+	_glow_overlay.z_index = 5
+	_glow_overlay.color = Color(0.0, 0.0, 0.0, 0.0)  # fully transparent initially
+	# Slightly larger than mold_sprite so it bleeds outward as a halo
+	_glow_overlay.offset_left = -48
+	_glow_overlay.offset_top = -38
+	_glow_overlay.offset_right = 48
+	_glow_overlay.offset_bottom = 38
+	mold_sprite.add_child(_glow_overlay)
+	_setup_blob_catcher()
 	_update_display()
 
 func _input(event):
@@ -82,6 +99,39 @@ func _input(event):
 func _is_click_on_mold(click_pos: Vector2) -> bool:
 	var rect = Rect2(global_position - Vector2(40, 30), Vector2(80, 60))
 	return rect.has_point(click_pos)
+
+func _setup_blob_catcher() -> void:
+	# Area2D that catches falling MetalBlob RigidBody2Ds.
+	# The Area2D is positioned above the mold so blobs entering it
+	# triggers receive_metal — blobs pile up via physics above the mold.
+	_blob_catcher = Area2D.new()
+	_blob_catcher.name = "BlobCatcher"
+	_blob_catcher.position = Vector2(0, -30)
+	# Collision: monitor layer 1 (blobs) for entry detection
+	# Must have monitoring=true to detect body_entered events
+	_blob_catcher.collision_mask = 0b0001  # layer 1 = blobs
+	_blob_catcher.monitoring = true
+
+	var shape = RectangleShape2D.new()
+	shape.size = Vector2(70, 20)
+
+	var col = CollisionShape2D.new()
+	col.name = "CatcherShape"
+	col.shape = shape
+	col.position = Vector2(0, 0)
+
+	_blob_catcher.add_child(col)
+	add_child(_blob_catcher)
+
+	# Monitor blob entries — each blob in calls receive_metal once
+	_blob_catcher.body_entered.connect(_on_blob_catcher_entered.bind(_blob_catcher))
+
+func _on_blob_catcher_entered(body: Node2D) -> void:
+	# A MetalBlob landed in this mold's catcher zone
+	if body is RigidBody2D and body.has_method("get_metal_id"):
+		var metal_id = body.get_metal_id()
+		# Each blob = 1 unit of metal for fill purposes
+		receive_metal(metal_id, 1.0)
 
 func _on_mold_tapped():
 	mold_tapped.emit(mold_id)
@@ -121,14 +171,19 @@ func receive_metal(metal_id: String, amount: float, penalize: bool = true):
 	if current_metal == "":
 		current_metal = metal_id
 
+	# Guard: metal type mismatch mid-fill — reject with feedback
+	# Only fires when mold already has metal established (not on first pour)
+	if current_metal != "" and metal_id != current_metal:
+		_trigger_rejection_feedback()
+		metal_rejected.emit(mold_id, metal_id)
+		if penalize:
+			score_manager.add_waste(amount)
+		return
+
 	# Guard: wrong metal type — contamination
 	if metal_id != required_metal and not is_contaminated:
 		_trigger_wrong_metal_flash(metal_id)
 		_trigger_contamination(metal_id, amount)
-		return
-
-	# Guard: metal type mismatch mid-fill
-	if metal_id != current_metal:
 		return
 
 	# Process fill
@@ -247,6 +302,8 @@ func _update_fill_bar():
 	if _display_tween:
 		_display_tween.kill()
 	_display_tween = create_tween()
+	if _display_tween == null:
+		return
 	_display_tween.tween_property(fill_bar, "value", target_val, 0.25)
 	if mold_state == MoldState.HARDENING:
 		fill_bar.modulate = Color.ORANGE
@@ -300,20 +357,36 @@ func _update_state_label():
 		state_label.modulate = Color.WHITE
 
 func _update_fill_glow():
-	# Add ambient glow to mold sprite based on fill state
-	# When filling: increase brightness proportional to fill amount
-	# When complete/hardening: dim glow
+	# FEATURE-008: drive a dedicated overlay ColorRect by fill percent.
+	# Alpha ramps from 0 → 0.6 as fill goes 0→100%, scale also grows.
+	# This replaces the old sine-wave-only brightness modulation.
+	if not is_instance_valid(_glow_overlay):
+		return
 	if mold_state == MoldState.FILLING:
 		var fill_pct = get_fill_percent()
-		# Subtle glow pulse animation
-		var pulse = (sin(Time.get_ticks_msec() * 0.005) + 1.0) * 0.15 + 0.85
-		mold_sprite.modulate.v = pulse  # brighten based on fill
+		var metal_color = MetalDefinition.get_color(current_metal)
+		var alpha = fill_pct * 0.65
+		# Outer glow halo: color × low alpha, larger than base sprite
+		_glow_overlay.color = Color(metal_color.r, metal_color.g, metal_color.b, alpha)
+		# Scale the overlay up as fill increases (halo grows outward)
+		var glow_scale = 1.0 + fill_pct * 0.3
+		_glow_overlay.scale = Vector2(glow_scale, glow_scale)
+		_glow_overlay.visible = true
 	elif mold_state == MoldState.HARDENING:
-		mold_sprite.modulate.v = 0.6  # dimmer during cooling
+		_glow_overlay.color.a = 0.3
+		_glow_overlay.scale = Vector2(1.15, 1.15)
+		_glow_overlay.visible = true
 	elif is_complete:
-		mold_sprite.modulate.v = 0.7  # finished glow
+		_glow_overlay.color.a = 0.4
+		_glow_overlay.scale = Vector2(1.2, 1.2)
+		_glow_overlay.visible = true
 	elif is_contaminated:
-		mold_sprite.modulate.v = 0.4  # dim contamination
+		_glow_overlay.color = Color(1.0, 0.0, 0.0, 0.35)
+		_glow_overlay.scale = Vector2(1.1, 1.1)
+		_glow_overlay.visible = true
+	else:
+		_glow_overlay.visible = false
+		_glow_overlay.color.a = 0.0
 
 func _get_metal_color(metal_id: String) -> Color:
 	return MetalDefinition.get_color(metal_id)
@@ -387,6 +460,8 @@ func _start_padlock_pulse():
 	if _padlock_pulse_tween:
 		_padlock_pulse_tween.kill()
 	_padlock_pulse_tween = create_tween()
+	if _padlock_pulse_tween == null:
+		return
 	_padlock_pulse_tween.set_parallel(true)
 	_padlock_pulse_tween.tween_property(padlock, "scale", Vector2(1.15, 1.15), 0.4).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	_padlock_pulse_tween.tween_property(padlock, "scale", Vector2(0.9, 0.9), 0.4).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE).from_current()
@@ -402,6 +477,8 @@ func _create_contamination_effect():
 		if _contamination_effect_tween:
 			_contamination_effect_tween.kill()
 		_contamination_effect_tween = create_tween()
+		if _contamination_effect_tween == null:
+			return
 		_contamination_effect_tween.tween_property(mold_sprite, "modulate", Color.RED, 0.1)
 		_contamination_effect_tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.3)
 
@@ -411,8 +488,28 @@ func _trigger_wrong_metal_flash(_wrong_metal: String):
 		if _wrong_metal_flash_tween:
 			_wrong_metal_flash_tween.kill()
 		_wrong_metal_flash_tween = create_tween()
+		if _wrong_metal_flash_tween == null:
+			return
 		_wrong_metal_flash_tween.tween_property(mold_sprite, "modulate", Color.ORANGE, 0.08)
 		_wrong_metal_flash_tween.tween_property(mold_sprite, "modulate", Color.RED, 0.08)
+
+func _trigger_rejection_feedback():
+	# Mid-fill metal switch rejection: shake the mold sprite + flash state label.
+	# Uses existing _rejection_tween var to prevent tween accumulation.
+	if mold_sprite:
+		if _rejection_tween:
+			_rejection_tween.kill()
+		_rejection_tween = create_tween()
+		if _rejection_tween == null:
+			return
+		_rejection_tween.tween_property(mold_sprite, "offset:x", -4.0, 0.05)
+		_rejection_tween.tween_property(mold_sprite, "offset:x", 4.0, 0.05)
+		_rejection_tween.tween_property(mold_sprite, "offset:x", -3.0, 0.05)
+		_rejection_tween.tween_property(mold_sprite, "offset:x", 3.0, 0.05)
+		_rejection_tween.tween_property(mold_sprite, "offset:x", 0.0, 0.05)
+	if state_label:
+		state_label.text = "Wrong Metal"
+		state_label.modulate = Color.RED
 
 func _create_receiving_glow(metal_id: String):
 	# Brief bright flash when metal enters the mold
@@ -421,6 +518,8 @@ func _create_receiving_glow(metal_id: String):
 			_receiving_glow_tween.kill()
 		var color = MetalDefinition.get_color(metal_id)
 		_receiving_glow_tween = create_tween()
+		if _receiving_glow_tween == null:
+			return
 		_receiving_glow_tween.tween_property(mold_sprite, "modulate", color * 1.5, 0.1)
 		_receiving_glow_tween.tween_property(mold_sprite, "modulate", color * 0.7, 0.2)
 
@@ -433,13 +532,11 @@ func _spawn_splatter_burst(metal_id: String):
 	splatter.lifetime = 0.4
 	splatter.explosiveness = 0.85
 	splatter.randomness = 0.4
-	splatter.fraction_dead = 0.1
 	splatter.one_shot = true
 	splatter.speed_scale = 1.2
 	# Burst upward/outward from mold surface
 	splatter.direction = Vector2(0, -1)
 	splatter.spread = 70.0
-	splatter.flatness = 0.3
 	splatter.initial_velocity_min = 60.0
 	splatter.initial_velocity_max = 140.0
 	splatter.gravity = Vector2(0, 300)
@@ -454,12 +551,34 @@ func _spawn_splatter_burst(metal_id: String):
 	splatter.position = Vector2(0, -20)
 	add_child(splatter)
 
-	# Destroy after burst completes
-	splatter.finished.connect(_on_splatter_finished.bind(splatter))
+	# Destroy after burst completes — use tree_exited instead of finished signal.
+	# In Godot 4, CPUParticles2D.finished is only emitted naturally when a
+	# one-shot completes AND emitting is set to false by the engine; it cannot
+	# be triggered manually via call_deferred emit_signal. Relying on it caused
+	# orphaned SplatterBurst nodes to accumulate.
+	# Use a timer matching the particle lifetime as a reliable cleanup trigger.
+	var cleanup_timer = Timer.new()
+	cleanup_timer.name = "SplatterCleanupTimer"
+	cleanup_timer.one_shot = true
+	cleanup_timer.wait_time = splatter.lifetime + 0.05
+	cleanup_timer.timeout.connect(_on_splatter_cleanup_timer.bind(splatter, cleanup_timer))
+	splatter.add_child(cleanup_timer)
+	if splatter.is_inside_tree():
+		cleanup_timer.start()
+	else:
+		# Headless / unit-test context: no scene tree → cleanup immediately
+		cleanup_timer.queue_free()
+		splatter.queue_free()
 
 func _on_splatter_finished(particles: CPUParticles2D):
 	if particles and is_instance_valid(particles):
 		particles.queue_free()
+
+func _on_splatter_cleanup_timer(particles: CPUParticles2D, timer: Timer):
+	if is_instance_valid(particles):
+		particles.queue_free()
+	if is_instance_valid(timer):
+		timer.queue_free()
 
 func _get_circle_texture() -> Texture2D:
 	# Generate a simple circle texture for particles
@@ -481,6 +600,8 @@ func _animate_hardening():
 		if _hardening_tween:
 			_hardening_tween.kill()
 		_hardening_tween = create_tween()
+		if _hardening_tween == null:
+			return
 		_hardening_tween.set_parallel(false)
 		# Flash white
 		_hardening_tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.1)
@@ -490,6 +611,8 @@ func _animate_hardening():
 		_hardening_tween.tween_property(mold_sprite, "modulate", Color(0.5, 0.55, 0.6), 0.4)
 		# Scale shrink with ease_in
 		var scale_tween = create_tween()
+		if scale_tween == null:
+			return
 		scale_tween.tween_property(mold_sprite, "scale", HARDENING_SHRINK_SCALE, 0.2).set_ease(Tween.EASE_IN)
 
 func _animate_complete_settle():
@@ -499,6 +622,8 @@ func _animate_complete_settle():
 		if _complete_settle_tween:
 			_complete_settle_tween.kill()
 		_complete_settle_tween = create_tween()
+		if _complete_settle_tween == null:
+			return
 		_complete_settle_tween.tween_property(mold_sprite, "scale", Vector2(1.0, 1.0), 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
 
 func _create_complete_effect():
@@ -506,6 +631,8 @@ func _create_complete_effect():
 		if _complete_effect_tween:
 			_complete_effect_tween.kill()
 		_complete_effect_tween = create_tween()
+		if _complete_effect_tween == null:
+			return
 		_complete_effect_tween.set_parallel(false)
 		# Chain: flash (0.1s) -> desaturate (0.2s) -> darken (0.3s) = 0.6s, then scale bounce
 		# Flash white
@@ -523,5 +650,7 @@ func _create_clear_effect():
 		if _clear_effect_tween:
 			_clear_effect_tween.kill()
 		_clear_effect_tween = create_tween()
+		if _clear_effect_tween == null:
+			return  # Can't tween outside SceneTree (e.g. headless tests)
 		_clear_effect_tween.tween_property(mold_sprite, "modulate", Color.BLUE * 0.3, 0.2)
 		_clear_effect_tween.tween_property(mold_sprite, "modulate", Color.WHITE, 0.2)

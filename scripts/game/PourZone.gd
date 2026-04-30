@@ -29,6 +29,9 @@ var _pour_zone_bg: ColorRect  # scene reference for pulsing border effect
 var _pulsing_tween: Tween = null  # stored to prevent accumulation on re-call
 var _ghost_tween: Tween = null  # FEATURE-007: ghost pulse tween
 
+# ── Debug UI (sine-dub info) ──────────────────────────────────────────────────
+var _debug_label: Label  # live readout of pour_origin, target_mold, zone rect
+
 # Dynamic pour params driven by metal definition
 var _current_stream_width: float = 8.0
 var _current_particle_interval: float = 0.04
@@ -48,15 +51,32 @@ func _setup_visuals():
 	# Stream line from top of screen down to pour point
 	_stream_line = Line2D.new()
 	_stream_line.name = "StreamLine"
+	_stream_line.global_position = Vector2.ZERO  # local == world space (identity transform)
 	_stream_line.width = _current_stream_width
 	_stream_line.default_color = _get_metal_color(_active_metal)
 	_stream_line.round_precision = 8
 	_stream_line.visible = false
 	add_child(_stream_line)
 
+	# ── Debug overlay (sine-dub info) ───────────────────────────────────────
+	var debug_layer = CanvasLayer.new()
+	debug_layer.name = "DebugLayer"
+	debug_layer.layer = 200  # above everything
+	add_child(debug_layer)
+	_debug_label = Label.new()
+	_debug_label.name = "PourDebugLabel"
+	_debug_label.global_position = Vector2(10, 200)
+	_debug_label.add_theme_font_size_override("font_size", 14)
+	_debug_label.add_theme_color_override("font_color", Color(0, 1, 0.5))
+	_debug_label.text = "Pour: idle"
+	_debug_label.visible = false
+	debug_layer.add_child(_debug_label)
+	# ───────────────────────────────────────────────────────────────────────
+
 	# FEATURE-007: StreamGlowLine — wide halo behind stream
 	_glow_line = Line2D.new()
 	_glow_line.name = "StreamGlowLine"
+	_glow_line.global_position = Vector2.ZERO  # local == world space
 	_glow_line.width = _current_stream_width * 4
 	_glow_line.default_color = _get_metal_glow_color(_active_metal)
 	_glow_line.round_precision = 8
@@ -78,6 +98,7 @@ func _setup_visuals():
 	# Particle container
 	_particle_container = Node2D.new()
 	_particle_container.name = "ParticleContainer"
+	_particle_container.global_position = Vector2.ZERO  # local == world space; particles use world-space coords
 	add_child(_particle_container)
 
 	# FEATURE-007: Pour-origin ghost indicator — dim outline shown at pour point
@@ -134,22 +155,41 @@ func _process(delta):
 		_last_particle_time = 0.0
 		_spawn_drip_particle()
 
+	# Update sine-dub debug label
+	if _debug_label:
+		var mold_name = "none"
+		if target_mold and is_instance_valid(target_mold):
+			mold_name = target_mold.name
+		var zone = _get_zone_rect()
+		_debug_label.text = (
+			"pour_origin : (%.0f, %.0f)\n" %
+			[pour_origin.x, pour_origin.y] +
+			"target_mold  : %s\n" % mold_name +
+			"zone_x       : [%.0f - %.0f]\n" % [zone.position.x, zone.position.x + zone.size.x] +
+			"mouse_x      : %.0f" % get_global_mouse_position().x
+		)
+
 func _update_stream_visuals():
 	if not _stream_line:
 		return
 
-	# Stream from furnace top down to target mold (if known), else pour_origin
-	var top_y = 0.0  # furnace top
-	var top_pos = Vector2(pour_origin.x, top_y)
+	# Stream runs straight down from the press point (pour_origin) to the
+	# target mold. The nozzle position is never used for stream visuals — the
+	# molten metal exits at pour_origin world-space and falls straight down.
+	#
+	# NOTE: pour_origin is world-space. Line2D is a child of PourZone (local
+	# space). To use world-space coords directly, set global_position = ZERO
+	# so the node's transform is identity and local coords == world coords.
+	var top_pos: Vector2 = pour_origin          # world-space
 	var end_pos: Vector2
 	if target_mold and is_instance_valid(target_mold):
-		end_pos = target_mold.global_position
+		end_pos = target_mold.global_position    # world-space
 	else:
 		end_pos = pour_origin
 
 	_stream_line.clear_points()
-	_stream_line.add_point(top_pos)
-	_stream_line.add_point(end_pos)
+	_stream_line.add_point(top_pos)              # local; ZERO global_pos → world = local
+	_stream_line.add_point(end_pos)              # local; ZERO global_pos → world = local
 	_stream_line.default_color = _get_metal_color(_active_metal)
 	_stream_line.width = _current_stream_width
 
@@ -179,41 +219,28 @@ func _update_stream_visuals():
 		_pour_origin_ghost.modulate.a = ghost_pulse
 
 func _spawn_drip_particle():
+	# Spawn a MetalBlob RigidBody2D at the nozzle position.
+	# Physics handles the fall — blobs bounce off closed gates and pile in molds.
 	if not _particle_container:
 		return
 
-	var drip = ColorRect.new()
-	# Add size and color variation based on metal type for liquid feel
 	var metal_id = _active_metal if _active_metal else "iron"
-	match metal_id:
-		"iron":
-			# Dull orange, smaller drips
-			drip.color = Color(0.85, 0.3, 0.05)
-			drip.size = Vector2(randf_range(2, 4), randf_range(2, 4))
-		"steel":
-			# Bright silver-white, medium drips
-			drip.color = Color(0.8, 0.85, 0.95)
-			drip.size = Vector2(randf_range(3, 5), randf_range(3, 5))
-		"gold":
-			# Shimmering yellow, larger dripping beads
-			drip.color = Color(1.0, 0.9, 0.3)
-			drip.size = Vector2(randf_range(4, 7), randf_range(4, 7))
-		_:
-			drip.color = _get_metal_color(metal_id)
-			drip.size = Vector2(3, 3)
 
-	# Start near pour point with slight horizontal scatter
+	# Spawn position: at the nozzle tip with slight horizontal scatter
 	var scatter = _current_stream_width * 0.5
-	var start_x = pour_origin.x + randf_range(-scatter, scatter)
-	drip.position = Vector2(start_x, pour_origin.y - _current_stream_width)
-	_particle_container.add_child(drip)
+	var spawn_x = pour_origin.x + randf_range(-scatter, scatter)
+	var spawn_pos = Vector2(spawn_x, pour_origin.y - _current_stream_width)
 
-	# Fall toward mold area
-	var fall_distance = _screen_height - pour_origin.y
-	var duration = fall_distance / particle_speed
-	var tween = create_tween()
-	tween.tween_property(drip, "position:y", pour_origin.y + fall_distance, duration)
-	tween.tween_callback(drip.queue_free)
+	# Load MetalBlob script and instantiate — avoids class_name parse-time resolution
+	# issues when the project is checked in isolation.
+	var BlobClass = load("res://scripts/game/MetalBlob.gd")
+	if not BlobClass:
+		push_error("PourZone: could not load MetalBlob.gd")
+		return
+	var blob = BlobClass.new()
+	blob.setup(metal_id, spawn_pos)
+	# Add to world root so it participates in physics simulation
+	get_tree().root.add_child(blob)
 
 func _input(event):
 	if event is InputEventMouseButton:
@@ -232,13 +259,15 @@ func _input(event):
 			_update_pour_position(get_global_mouse_position())
 
 func _is_position_in_zone(pos: Vector2) -> bool:
-	var zone_rect = Rect2(
+	return _get_zone_rect().has_point(pos)
+
+func _get_zone_rect() -> Rect2:
+	return Rect2(
 		global_position.x - zone_width / 2,
 		global_position.y - 50,
 		zone_width,
 		100
 	)
-	return zone_rect.has_point(pos)
 
 func _start_pour(pos: Vector2):
 	is_pouring = true
@@ -258,17 +287,29 @@ func _start_pour(pos: Vector2):
 
 	_show_stream_visuals()
 	pour_started.emit(global_position)
+	if _debug_label:
+		_debug_label.visible = true
 
 func _update_pour_position(pos: Vector2):
+	# Design doc: "finger slides left/right to move pour origin."
+	# The nozzle follows the live mouse position, clamped to zone bounds.
 	pour_origin = pos
-	pour_position_changed.emit(pos)
+	# Re-apply metal properties in case stream width changed
+	_apply_metal_properties()
 
 func _end_pour():
+	# Route any accumulated metal before stopping — MetalFlow._process
+	# stops the instant is_pouring=false, so we must flush here or the
+	# accumulated amount is silently lost.
+	if metal_flow and metal_flow.has_method("flush_accumulator") and _last_pour_metal != "":
+		metal_flow.flush_accumulator(_last_pour_metal, pour_origin)
 	is_pouring = false
 	if metal_source:
 		metal_source.stop_pour()
 	_hide_stream_visuals()
 	pour_ended.emit()
+	if _debug_label:
+		_debug_label.visible = false
 
 func _on_gate_toggled(_gate_id: String, _state: bool):
 	# Gate changed mid-pour — flush any accumulated metal via fallback routing

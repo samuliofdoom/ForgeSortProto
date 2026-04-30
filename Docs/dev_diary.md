@@ -1,5 +1,23 @@
 # ForgeSortProto — Development Diary
 
+## Session: 2026-04-30 (Evening)
+
+**Status going in**: BUG-004 (game_over handler) already fixed in prior session. MetalBlob.gd introduced FREEZE_MODE_DISABLED (Godot 4.7+ API) causing parse error.
+
+**Action**: Designer agent spun up via MCP → live game review → reported D-1 (timer `"0.0fs"` typo) and D-2 (game_over no handler). Orchestrator re-verified: D-2 was already fixed. Only D-1 was real.
+
+**Fixes applied tonight**:
+| Fix | File | Change |
+|-----|------|--------|
+| D-1: Timer `"0.0fs"` literal | `scripts/ui/OrderChecklistUI.gd:65` | `"%.1fs"` → `"%.1f s"` |
+| MetalBlob parse error | `scripts/game/MetalBlob.gd:25,31` | Removed `FREEZE_MODE_DISABLED` (4.7+ only); `freeze_mode=disabled` is Godot 4.6.2 default |
+
+**Validate**: 9/9 pass, 0 warnings. MetalBlob was never in smoke_check.
+
+**BUG-004 status**: Already fixed in prior session — ResultPanel.gd:20 connects `game_over`, handler at lines 30-33 with shake overlay. Dev diary incorrectly listed it as open.
+
+---
+
 ## Session: 2026-04-29 (Morning)
 
 **Status going in**: 9/9 validate.sh pass. Headless exits clean. 23/23 game scripts compile. GateDebugHUD committed (`8648426`).
@@ -50,6 +68,7 @@ A one-screen mobile forge-action prototype. Hold+sweep to pour molten metal → 
 - Waste-based game end goes straight to result screen — no "GAME OVER" moment
 - Fix: Connect `game_over` in ResultPanel, add screen shake + flash + overlay
 - Reported by: Designer (Priority 2), QA (BUG-QA-003)
+- **Status: FIXED** — ResultPanel.gd:20 connects `game_over`, `_on_game_over` at lines 30-33 with shake overlay
 
 ### Polish Gaps (P2 — Phase B/C)
 
@@ -94,7 +113,7 @@ A one-screen mobile forge-action prototype. Hold+sweep to pour molten metal → 
 1. **A1**: Fix speed bonus per-order timing (BUG-001)
 2. **A2**: Fix flush_accumulator double-penalty (BUG-002)
 3. **A3**: Fix contamination leakage (BUG-003)
-4. **A4**: Handle game_over signal with dramatic UI (BUG-004)
+4. **A4**: Handle game_over signal with dramatic UI (BUG-004) — **DONE**
 
 ### Phase B — Content Completion (2-3 days)
 1. **B1**: Audio layer (pour hum, fill clank, contamination buzz, gate click, waste tick)
@@ -128,7 +147,7 @@ A one-screen mobile forge-action prototype. Hold+sweep to pour molten metal → 
 ## Five-Agent Analysis Output Files
 
 | File | Role | Size |
-|-------|------|------|
+|------|------|------|
 | /tmp/designer_report.md | Designer | 15KB |
 | /tmp/coder_report.md | Coder | 21KB |
 | /tmp/artist_report.md | Artist | 9KB |
@@ -140,6 +159,7 @@ A one-screen mobile forge-action prototype. Hold+sweep to pour molten metal → 
 ## Commit History (this project)
 
 ```
+SMOKE CHECK: metalblob_freeze_fix (HEAD)
 8648426 feat: GateDebugHUD — F1-toggleable debug overlay for playtesting
 f820a62 fix: BUG-FLOW-001 (silent wrong-mold routing), BUG-RESULT-001 (dict key fallback), BUG-GATE-001 (CONNECT_ONE_SHOT)
 10ce7a3 fix: P0 bugs (WasteMeter, PourZone color, Intake dead signal) + SpeedTimer

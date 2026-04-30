@@ -54,15 +54,16 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 
 | File | Purpose |
 |------|---------|
-| `scenes/Main.tscn` | load_steps=19 (17 ext + 2 sub) |
+| `scenes/Main.tscn` | load_steps=22 (17 ext + 5 sub) |
 | `scripts/game/GameController.gd` | Start flow, order reset |
 | `scripts/game/MetalFlow.gd` | Pour routing (uses `get_mold_for_pour_position`) |
 | `scripts/game/FlowController.gd` | Gate routing (has BOTH `get_mold_for_intake` AND `get_mold_for_pour_position`) |
 | `scripts/game/Mold.gd` | Fill/contamination (tap to clear) |
 | `scripts/game/Gate.gd` | Toggle (input_pickable=true) |
 | `scripts/game/PourZone.gd` | Hold/sweep input |
+| `scripts/game/MetalBlob.gd` | RigidBody2D droplet — physics fall/gate-block/mold-catch (NOT in smoke_check) |
 | `scripts/ui/GateToggleUI.gd` | G1-G4 buttons |
-| `scripts/dev/smoke_check.gd` | Full compilation check (`.new()` all game/UI scripts) |
+| `scripts/dev/smoke_check.gd` | Full compilation check (`.new()` all game/UI scripts — MetalBlob excluded) |
 
 ---
 
@@ -83,6 +84,7 @@ GameData, ScoreManager, MetalSource, OrderManager, FlowController, MetalFlow
 5. When prefixing a signal callback param with `_`, update the body too (e.g. `_score` not just `score` in signature — body must also use `_score`)
 6. `smoke_check.gd` skips data definitions (OrderDefinition, MoldDefinition, MetalDefinition, GameData) — they have required `_init()` args and can only be `load()`ed, not `.new()`ed
 7. **Routing API mismatch**: `test_flow_controller_routing.gd` uses `get_mold_for_intake()` but the actual runtime uses `get_mold_for_pour_position()` — do NOT trust test_flow_controller_routing.gd for routing correctness, it tests the wrong API
+8. `RigidBody2D.FREEZE_MODE_DISABLED` is Godot 4.7+ — does NOT exist in 4.6.2. Remove entirely; `freeze_mode=disabled` is the default and need not be set explicitly.
 
 ## Known Gotchas
 - Gate uses `_input(event)` not `Area2D` for click detection

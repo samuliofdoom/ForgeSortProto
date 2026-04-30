@@ -45,6 +45,7 @@ func start_order_timer():
 func reset_order():
 	contamination_count = 0
 	contamination_this_order = 0
+	contamination_this_order_updated.emit(0)
 
 func add_waste(amount: float):
 	waste_units += amount

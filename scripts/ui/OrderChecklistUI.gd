@@ -6,10 +6,10 @@ extends Control
 
 @onready var checklist_container: VBoxContainer = $ChecklistContainer
 @onready var title_label: Label = $TitleLabel
-@onready var timer_label: Label = $TimerContainer/TimerLabel
-@onready var timer_container: HBoxContainer = $TimerContainer
-@onready var speed_bonus_label: Label = $TimerContainer/SpeedBonusLabel
-@onready var contamination_label: Label = $ContaminationContainer/ContaminationLabel
+var timer_label: Label = null
+var timer_container: HBoxContainer = null
+var speed_bonus_label: Label = null
+var contamination_label: Label = null
 
 var order_manager: Node
 var score_manager: Node
@@ -33,6 +33,12 @@ func _ready():
 			if mold.has_signal("part_produced"):
 				mold.part_produced.connect(_on_part_produced)
 
+	# Get optional timer/contamination nodes (may not exist in all scene configurations)
+	timer_container = get_node_or_null("TimerContainer")
+	timer_label = get_node_or_null("TimerContainer/TimerLabel")
+	speed_bonus_label = get_node_or_null("TimerContainer/SpeedBonusLabel")
+	contamination_label = get_node_or_null("ContaminationContainer/ContaminationLabel")
+
 	_update_visibility()
 
 func _on_order_started(order: OrderDefinition):
@@ -49,32 +55,42 @@ func _on_part_produced(_part_id: String, _mold_id: String):
 		_refresh_checks(order_manager.get_completed_parts())
 
 func _process(_delta):
-	if not timer_container.visible:
+	if timer_container == null or not timer_container.visible:
 		return
 	if not score_manager or score_manager.order_start_time == 0:
 		return
 	var elapsed = (Time.get_ticks_msec() - score_manager.order_start_time) / 1000.0
 	var remaining = max(0.0, 30.0 - elapsed)
-	timer_label.text = "%.1fs" % elapsed
-	speed_bonus_label.text = "(+%.0f speed)" % remaining if remaining > 0 else "(no speed)"
+	if timer_label:
+		timer_label.text = "%.1f s" % elapsed
+	if speed_bonus_label:
+		speed_bonus_label.text = "(+%.0f speed)" % remaining if remaining > 0 else "(no speed)"
 	_update_timer_color(elapsed)
 
 func _update_timer_color(elapsed: float):
 	if elapsed < 25.0:
-		timer_label.modulate = Color.WHITE
-		speed_bonus_label.modulate = Color.GREEN
+		if timer_label:
+			timer_label.modulate = Color.WHITE
+		if speed_bonus_label:
+			speed_bonus_label.modulate = Color.GREEN
 	elif elapsed < 30.0:
-		timer_label.modulate = Color.ORANGE
-		speed_bonus_label.modulate = Color.YELLOW
+		if timer_label:
+			timer_label.modulate = Color.ORANGE
+		if speed_bonus_label:
+			speed_bonus_label.modulate = Color.YELLOW
 	else:
-		timer_label.modulate = Color.RED
-		speed_bonus_label.modulate = Color.RED
+		if timer_label:
+			timer_label.modulate = Color.RED
+		if speed_bonus_label:
+			speed_bonus_label.modulate = Color.RED
 
 func _reset_timer_display():
-	timer_label.text = "0.0s"
-	speed_bonus_label.text = "(+30 speed)"
-	timer_label.modulate = Color.WHITE
-	speed_bonus_label.modulate = Color.GREEN
+	if timer_label:
+		timer_label.text = "0.0s"
+	if speed_bonus_label:
+		speed_bonus_label.text = "(+30 speed)"
+		timer_label.modulate = Color.WHITE
+		speed_bonus_label.modulate = Color.GREEN
 	if contamination_label:
 		contamination_label.text = "Contamination: 0"
 		contamination_label.modulate = Color.GREEN

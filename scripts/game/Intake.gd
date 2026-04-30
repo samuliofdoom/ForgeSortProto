@@ -89,7 +89,6 @@ func _spawn_particle_burst(color: Color):
 	particles.lifetime = 0.5
 	particles.explosiveness = 0.9
 	particles.randomness = 0.3
-	particles.fraction_dead = 0.2
 	particles.one_shot = true
 	particles.speed_scale = 1.5
 	particles.direction = Vector2(0, -1)

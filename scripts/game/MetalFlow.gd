@@ -3,6 +3,7 @@ extends Node
 signal metal_poured(metal_id: String, world_position: Vector2, amount: float)
 signal waste_routed(metal_id: String, world_position: Vector2, amount: float)
 signal pour_routing_decided(world_position: Vector2, mold_id: String)  # emitted when routing target is resolved
+signal fallback_delivered(metal_id: String, world_position: Vector2, amount: float)  # fallback routing — metal physically enters a mold; distinct from waste_routed
 
 var active_pour_zone: Node = null
 var metal_source: Node
@@ -47,7 +48,7 @@ func flush_accumulator(metal_id: String, pour_origin: Vector2):
 	if pour_accumulator >= 1.0:
 		var amount = floor(pour_accumulator)
 		pour_accumulator = 0.0
-		_route_fallback(metal_id, pour_origin, amount, false)
+		_route_fallback(metal_id, pour_origin, amount, true)  # penalize=true: mid-pour gate toggle carries same waste penalty as blocked pour
 
 func _route_pour(metal_id: String, pour_pos: Vector2, amount: float):
 	_last_pour_metal = metal_id
@@ -95,9 +96,9 @@ func _route_fallback(metal_id: String, pour_pos: Vector2, amount: float, penaliz
 				nearest_mold_id = mold_id
 
 	if nearest_mold_id and molds[nearest_mold_id]:
-		# Fallback routing delivers metal to nearest mold (correct behavior.)
-		# waste_routed.emit() fires for visual feedback only — no score penalty.
-		# receive_metal applies waste penalty internally via its penalize param
-		# (false from flush_accumulator, true from normal _route_pour intake-blocked path).
-		waste_routed.emit(metal_id, pour_pos, amount)
+		# Fallback routing delivers metal to nearest mold — correct behaviour.
+		# emit fallback_delivered (not waste_routed) so the visual feedback correctly
+		# reflects that metal physically entered a mold; waste_routed is reserved
+		# for pour that exits the system without reaching any mold.
+		fallback_delivered.emit(metal_id, pour_pos, amount)
 		molds[nearest_mold_id].receive_metal(metal_id, amount, penalize)
